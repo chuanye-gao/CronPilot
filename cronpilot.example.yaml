@@ -1,0 +1,20 @@
+timezone: Asia/Singapore
+
+llm:
+  base_url: https://api.openai.com/v1
+  model: gpt-5
+  # Prefer the CRONPILOT_API_KEY environment variable.
+  api_key: ""
+
+tasks:
+  - name: daily-ai-brief
+    schedule: "0 8 * * *"
+    prompt: |
+      Summarize the most important AI developments from the last 24 hours.
+      Keep the result concise and structured.
+
+  - name: evening-review
+    schedule: "0 21 * * *"
+    enabled: false
+    prompt: |
+      Produce a short end-of-day review.
