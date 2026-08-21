@@ -1,0 +1,20 @@
+# Binaries
+/bin/
+cronpilot
+cronpilot.exe
+
+# Local configuration / secrets
+cronpilot.yaml
+.env
+.env.*
+
+# Go
+*.test
+*.out
+/vendor/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
