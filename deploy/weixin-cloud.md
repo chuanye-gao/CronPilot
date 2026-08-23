@@ -21,7 +21,7 @@ CRONPILOT_DATABASE_DRIVER=mysql
 从同一仓库创建第二个服务：
 
 ```text
-Dockerfile: deploy/searxng/Dockerfile
+Dockerfile: Dockerfile.search
 构建目录: 仓库根目录
 容器端口: 8080
 最小实例: 1

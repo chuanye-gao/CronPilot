@@ -82,3 +82,6 @@ jobs:
 
       - name: Build production container
         run: docker build --tag cronpilot:ci .
+
+      - name: Build search container
+        run: docker build --file Dockerfile.search --tag cronpilot-search:ci .
