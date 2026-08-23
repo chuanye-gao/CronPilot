@@ -1,4 +1,15 @@
-use_default_settings: true
+use_default_settings:
+  engines:
+    # Weixin Cloud runs on a mainland network. Load only engines that are
+    # intentionally configured for that network so newly added SearXNG
+    # defaults cannot silently reintroduce unreachable overseas providers.
+    keep_only:
+      - 360search
+      - baidu
+      - bing
+      - bing news
+      - sogou
+      - sogou wechat
 
 general:
   instance_name: CronPilot Search
@@ -25,28 +36,9 @@ outgoing:
   pool_connections: 50
   pool_maxsize: 20
 
-# These engines are disabled in SearXNG defaults. Enabling China-reachable
-# providers prevents a mainland deployment from depending only on Google,
-# DuckDuckGo, Brave, or Startpage.
+# These engines are disabled in SearXNG defaults. Enable the providers kept by
+# the whitelist above and give them explicit cloud-friendly timeouts.
 engines:
-  # These default engines are consistently unreachable from the mainland
-  # Weixin Cloud network. Disable them explicitly so they cannot delay a
-  # search or emit late timeout callbacks after the result container closes.
-  - name: google
-    disabled: true
-  - name: google news
-    disabled: true
-  - name: google cse
-    disabled: true
-  - name: duckduckgo
-    disabled: true
-  - name: brave
-    disabled: true
-  - name: brave.news
-    disabled: true
-  - name: startpage
-    disabled: true
-
   - name: 360search
     disabled: false
     categories: [general, news]
