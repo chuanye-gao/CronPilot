@@ -29,6 +29,24 @@ outgoing:
 # providers prevents a mainland deployment from depending only on Google,
 # DuckDuckGo, Brave, or Startpage.
 engines:
+  # These default engines are consistently unreachable from the mainland
+  # Weixin Cloud network. Disable them explicitly so they cannot delay a
+  # search or emit late timeout callbacks after the result container closes.
+  - name: google
+    disabled: true
+  - name: google news
+    disabled: true
+  - name: google cse
+    disabled: true
+  - name: duckduckgo
+    disabled: true
+  - name: brave
+    disabled: true
+  - name: brave.news
+    disabled: true
+  - name: startpage
+    disabled: true
+
   - name: 360search
     disabled: false
     categories: [general, news]
