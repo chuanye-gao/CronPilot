@@ -1,0 +1,39 @@
+timezone: Asia/Shanghai
+
+server:
+  address: 0.0.0.0:8080
+  public_url: http://127.0.0.1:18080
+
+database:
+  path: /data/cronpilot.db
+
+log:
+  format: json
+  level: info
+
+llm:
+  base_url: https://api.deepseek.com
+  model: deepseek-v4-flash
+  api_key: ""
+
+# CronPilot owns the model tool loop, query orchestration, page extraction and
+# evidence handling. SearXNG is an internal, replaceable metasearch backend.
+web_search:
+  enabled: true
+  endpoint: http://searxng:8080
+  timeout: 15s
+  max_results: 12
+  max_content_chars: 18000
+  max_tool_rounds: 4
+
+# QQ Mail is used for local delivery testing. Credentials remain in the
+# CRONPILOT_SMTP_USERNAME and CRONPILOT_SMTP_PASSWORD environment variables.
+email:
+  host: smtp.qq.com
+  port: 465
+  username_env: CRONPILOT_SMTP_USERNAME
+  password_env: CRONPILOT_SMTP_PASSWORD
+  tls: implicit
+  timeout: 20s
+
+tasks: []

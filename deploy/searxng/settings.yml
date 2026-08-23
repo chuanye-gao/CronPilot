@@ -1,0 +1,29 @@
+use_default_settings: true
+
+general:
+  instance_name: CronPilot Search
+  debug: false
+
+search:
+  safe_search: 0
+  autocomplete: ""
+  default_lang: auto
+  formats:
+    - html
+    - json
+
+server:
+  bind_address: "0.0.0.0"
+  port: 8080
+  secret_key: "cronpilot-local-websearch-4f8cc4d3b229f1b03a5930ad6be4dff5"
+  limiter: false
+  image_proxy: false
+
+outgoing:
+  request_timeout: 10.0
+  max_request_timeout: 15.0
+  pool_connections: 50
+  pool_maxsize: 20
+  proxies:
+    all://:
+      - http://host.docker.internal:17891

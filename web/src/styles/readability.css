@@ -1,0 +1,124 @@
+/* Readability pass: comfortable type sizes and less decorative density. */
+body { font-size: 16px; line-height: 1.5; }
+.button { min-height: 44px; padding: 0 18px; font-size: 14px; }
+.icon-button { width: 40px; height: 40px; }
+.eyebrow { font-size: 11px; }
+
+.language-toggle { min-height: 38px; padding: 0 10px; display: inline-flex; align-items: center; gap: 5px; color: #66716a; background: rgba(255,255,255,.75); border: 1px solid var(--line); border-radius: 9px; font-size: 12px; }
+.language-toggle svg { margin-right: 2px; }
+.language-toggle button { padding: 3px 4px; color: #8a948e; background: transparent; border: 0; border-radius: 5px; cursor: pointer; font-size: 12px; font-weight: 750; }
+.language-toggle button.active { color: var(--ink); background: var(--acid-soft); }
+.language-toggle > span { color: #b1b8b3; }
+
+.field { gap: 8px; font-size: 14px; }
+.field input,.field select { min-height: 46px; }
+.field input,.field textarea,.field select { padding-left: 14px; padding-right: 14px; font-size: 14px; }
+.field textarea { padding-top: 13px; line-height: 1.65; }
+.field small { font-size: 12px; }
+.inline-error,.success-message { padding: 13px 15px; font-size: 13px; }
+.status-badge { min-height: 28px; padding: 0 9px; font-size: 11px; }
+.empty-state h3 { font-size: 17px; }
+.empty-state p { font-size: 14px; }
+
+.console-shell { grid-template-columns: 250px minmax(0,1fr); }
+.console-sidebar { padding: 25px 16px 18px; }
+.console-nav { margin-top: 26px; gap: 5px; }
+.console-nav a { min-height: 46px; padding: 0 12px; font-size: 14px; }
+.console-nav a em { font-size: 10px; }
+.runtime-head strong { font-size: 12px; }
+.sidebar-runtime p { margin-bottom: 0; font-size: 11px; }
+.account-avatar { font-size: 12px; }
+.sidebar-account strong { font-size: 12px; }
+.sidebar-account small { font-size: 10px; }
+.console-topbar { min-height: 82px; }
+.console-topbar h1 { margin: 0; font-size: 22px; }
+.console-content { padding-top: 32px; }
+.welcome-row h2 { font-size: 30px; }
+.welcome-row p { font-size: 14px; }
+.today-card strong { font-size: 13px; }
+.today-card small { font-size: 11px; }
+.metric-grid small { font-size: 13px; }
+.metric-grid p { font-size: 12px; }
+.panel-header h2 { margin: 0; font-size: 18px; }
+.panel-header > a { font-size: 13px; }
+.collection-toolbar h2 { font-size: 19px; }
+.collection-toolbar p { font-size: 13px; }
+.search-box { min-height: 42px; }
+.search-box input { font-size: 14px; }
+
+.task-item { min-height: 88px; }
+.task-identity h3 { font-size: 14px; }
+.state-label { padding: 4px 7px; font-size: 10px; }
+.task-identity p { margin-top: 7px; font-size: 12px; }
+.task-schedule strong,.task-next strong { font-size: 12px; }
+.task-schedule span,.task-next span { font-size: 11px; }
+.table-empty { font-size: 13px; }
+.run-table-head { min-height: 44px; font-size: 11px; }
+.run-item { min-height: 72px; }
+.run-name strong { font-size: 13px; }
+.run-name code { font-size: 10px; }
+.run-cell,.run-item time { font-size: 12px; }
+.run-table.compact .run-item { min-height: 70px; }
+
+.modal-header h2 { margin: 0; font-size: 21px; }
+.switch-field strong { font-size: 13px; }
+.switch-field small { font-size: 11px; }
+.form-section-title { font-size: 12px; }
+.run-summary { font-size: 12px; }
+.detail-list dt,.detail-list dd { font-size: 12px; }
+.output-heading { font-size: 11px; }
+.run-output { font-size: 13px; }
+
+.channel-card { min-height: 460px; }
+.channel-card > .eyebrow { margin-top: 26px; }
+.channel-card > header + h2 { margin-top: 30px; }
+.channel-card > p { font-size: 14px; }
+.channel-status { font-size: 11px; }
+.primary-channel dl div { font-size: 13px; }
+.primary-channel dd { font-size: 12px; }
+.security-note,.setup-guide { font-size: 13px; }
+.overall-health { font-size: 11px; }
+.health-list strong { font-size: 13px; }
+.health-list code { font-size: 11px; }
+.build-info small { font-size: 11px; }
+.build-info strong,.build-info a { font-size: 13px; }
+
+.public-header nav,.text-link { font-size: 14px; }
+.hero-copy > p { font-size: 18px; }
+.hero-proof { font-size: 12px; }
+.section-intro p { font-size: 16px; }
+.feature-grid h3 { font-size: 18px; }
+.feature-grid p { font-size: 14px; }
+.architecture-section p { font-size: 15px; }
+.text-arrow { font-size: 14px; }
+.architecture-flow span { font-size: 13px; }
+.public-footer p,.public-footer > span { font-size: 12px; }
+
+.auth-story p { font-size: 16px; }
+.auth-panel { position: relative; }
+.auth-language { position: absolute; top: 28px; right: 35px; }
+.auth-card > p { font-size: 14px; }
+.auth-message { font-size: 13px; }
+.auth-switch { font-size: 13px; }
+.verification-sent strong { font-size: 15px; }
+.verification-sent p { font-size: 13px; }
+.verify-page { position: relative; }
+.verify-language { position: absolute; top: 24px; right: 24px; }
+.verify-card p { font-size: 14px; }
+
+@media (max-width: 860px) {
+  .console-sidebar { width: 270px; }
+  .auth-language { top: 20px; right: 22px; }
+}
+
+@media (max-width: 600px) {
+  .console-topbar h1 { font-size: 18px; }
+  .topbar-actions { gap: 7px; }
+  .language-toggle { padding: 0 7px; }
+  .language-toggle svg { display: none; }
+  .welcome-row h2 { font-size: 25px; }
+  .metric-grid p { white-space: normal; }
+  .task-identity h3 { font-size: 13px; }
+  .auth-language { top: 18px; right: 18px; }
+  .verify-language { top: 16px; right: 16px; }
+}

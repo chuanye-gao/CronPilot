@@ -1,14 +1,60 @@
 timezone: Asia/Singapore
 
+server:
+  address: 127.0.0.1:8080
+  public_url: http://127.0.0.1:8080
+
+database:
+  # Use driver: mysql with MYSQL_ADDRESS, MYSQL_USERNAME, MYSQL_PASSWORD,
+  # and MYSQL_DATABASE in a cloud deployment.
+  driver: sqlite
+  path: cronpilot.db
+
+log:
+  format: text
+  level: info
+
+# Aliyun DirectMail uses an SMTP account and SMTP password. Keep both secrets
+# in environment variables; do not put them in this file.
+# email:
+#   host: smtpdm.aliyun.com
+#   port: 465
+#   username_env: CRONPILOT_SMTP_USERNAME
+#   password_env: CRONPILOT_SMTP_PASSWORD
+#   from: cronpilot@example.com
+#   tls: implicit
+#   timeout: 20s
+
 llm:
   base_url: https://api.openai.com/v1
   model: gpt-5
   # Prefer the CRONPILOT_API_KEY environment variable.
   api_key: ""
 
+# Point this at a private SearXNG instance. CronPilot exposes it to the model
+# through its own safe web_search and web_open tools.
+web_search:
+  enabled: false
+  endpoint: http://127.0.0.1:8081
+  timeout: 15s
+  max_results: 12
+  max_content_chars: 18000
+  max_tool_rounds: 4
+
 tasks:
   - name: daily-ai-brief
+    # CronPilot applies the top-level timezone when this is omitted.
     schedule: "0 8 * * *"
+    timeout: 5m
+    retry:
+      max_attempts: 3
+      delay: 10s
+    # delivery:
+    #   type: email
+    #   to:
+    #     - you@example.com
+    #   on: [success, failed, timeout]
+    #   include_output: true
     prompt: |
       Summarize the most important AI developments from the last 24 hours.
       Keep the result concise and structured.

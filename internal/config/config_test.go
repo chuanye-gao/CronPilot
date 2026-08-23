@@ -1,0 +1,155 @@
+package config
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+)
+
+func TestLoadAppliesTaskDefaults(t *testing.T) {
+	path := writeConfig(t, `
+timezone: Asia/Shanghai
+server: {}
+llm:
+  model: test-model
+  api_key: test-key
+tasks:
+  - name: morning-brief
+    schedule: "0 8 * * *"
+    prompt: Write a brief.
+`)
+
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if cfg.Server.Address != "127.0.0.1:8080" {
+		t.Fatalf("server address = %q", cfg.Server.Address)
+	}
+	if cfg.Database.Path != "cronpilot.db" {
+		t.Fatalf("database path = %q", cfg.Database.Path)
+	}
+	if cfg.Database.Driver != "sqlite" {
+		t.Fatalf("database driver = %q", cfg.Database.Driver)
+	}
+	if cfg.Log.Format != "text" || cfg.Log.Level != "info" {
+		t.Fatalf("log config = %#v", cfg.Log)
+	}
+	got := cfg.Tasks[0]
+	if got.Timezone != "Asia/Shanghai" {
+		t.Fatalf("timezone = %q", got.Timezone)
+	}
+	if time.Duration(got.Timeout) != 5*time.Minute {
+		t.Fatalf("timeout = %s", got.Timeout)
+	}
+	if got.Retry.MaxAttempts != 1 || time.Duration(got.Retry.Delay) != 10*time.Second {
+		t.Fatalf("retry = %#v", got.Retry)
+	}
+}
+
+func TestLoadMySQLFromWeixinCloudEnvironment(t *testing.T) {
+	t.Setenv("MYSQL_ADDRESS", "10.0.0.8:3306")
+	t.Setenv("MYSQL_USERNAME", "cronpilot")
+	t.Setenv("MYSQL_PASSWORD", "mysql-secret")
+	t.Setenv("MYSQL_DATABASE", "cronpilot_prod")
+	path := writeConfig(t, "llm:\n  model: test\n  api_key: key\ntasks: []\n")
+
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if cfg.Database.Driver != "mysql" || cfg.Database.Address != "10.0.0.8:3306" || cfg.Database.Username != "cronpilot" || cfg.Database.Name != "cronpilot_prod" {
+		t.Fatalf("mysql config = %#v", cfg.Database)
+	}
+	if cfg.Database.Password != "mysql-secret" {
+		t.Fatal("mysql password was not loaded")
+	}
+}
+
+func TestLoadInfrastructureSettingsFromEnvironment(t *testing.T) {
+	t.Setenv("CRONPILOT_SERVER_ADDRESS", "127.0.0.1:18080")
+	t.Setenv("CRONPILOT_DATABASE_PATH", filepath.Join(t.TempDir(), "data", "cronpilot.db"))
+	t.Setenv("CRONPILOT_LOG_FORMAT", "json")
+	t.Setenv("CRONPILOT_LOG_LEVEL", "debug")
+	path := writeConfig(t, "llm:\n  model: test\n  api_key: key\ntasks: []\n")
+
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if cfg.Database.Path != os.Getenv("CRONPILOT_DATABASE_PATH") {
+		t.Fatalf("database path = %q", cfg.Database.Path)
+	}
+	if cfg.Server.Address != "127.0.0.1:18080" {
+		t.Fatalf("server address = %q", cfg.Server.Address)
+	}
+	if cfg.Log.Format != "json" || cfg.Log.Level != "debug" {
+		t.Fatalf("log config = %#v", cfg.Log)
+	}
+}
+
+func TestLoadWebSearchDefaultsAndEnvironment(t *testing.T) {
+	t.Setenv("CRONPILOT_WEB_SEARCH_ENDPOINT", "http://search.internal:8080")
+	path := writeConfig(t, "llm:\n  model: test\n  api_key: key\ntasks: []\n")
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if !cfg.WebSearch.Enabled || cfg.WebSearch.Endpoint != "http://search.internal:8080" {
+		t.Fatalf("web search = %#v", cfg.WebSearch)
+	}
+	if time.Duration(cfg.WebSearch.Timeout) != 15*time.Second || cfg.WebSearch.MaxResults != 12 || cfg.WebSearch.MaxContentChars != 18000 || cfg.WebSearch.MaxToolRounds != 4 {
+		t.Fatalf("web search defaults = %#v", cfg.WebSearch)
+	}
+}
+
+func TestLoadRejectsInvalidTaskSettings(t *testing.T) {
+	tests := map[string]string{
+		"schedule": `schedule: "not cron"`,
+		"timezone": "schedule: \"0 8 * * *\"\n    timezone: Mars/Olympus",
+		"timeout":  "schedule: \"0 8 * * *\"\n    timeout: -1s",
+	}
+	for name, taskSettings := range tests {
+		t.Run(name, func(t *testing.T) {
+			path := writeConfig(t, "llm:\n  model: test\n  api_key: key\ntasks:\n  - name: invalid\n    "+taskSettings+"\n    prompt: test\n")
+			if _, err := Load(path); err == nil {
+				t.Fatal("Load() succeeded, want error")
+			}
+		})
+	}
+}
+
+func TestLoadEmailCredentialsFromEnvironment(t *testing.T) {
+	t.Setenv("TEST_SMTP_USER", "sender@example.com")
+	t.Setenv("TEST_SMTP_PASSWORD", "smtp-secret")
+	path := writeConfig(t, `
+llm:
+  model: test
+  api_key: key
+email:
+  host: smtpdm.aliyun.com
+  username_env: TEST_SMTP_USER
+  password_env: TEST_SMTP_PASSWORD
+tasks: []
+`)
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if cfg.Email.Username != "sender@example.com" || cfg.Email.Password != "smtp-secret" || cfg.Email.From != "sender@example.com" {
+		t.Fatalf("email config = %#v", cfg.Email)
+	}
+	if cfg.Email.Port != 465 || cfg.Email.TLS != "implicit" {
+		t.Fatalf("email transport = %#v", cfg.Email)
+	}
+}
+
+func writeConfig(t *testing.T, contents string) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "cronpilot.yaml")
+	if err := os.WriteFile(path, []byte(contents), 0o600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	return path
+}

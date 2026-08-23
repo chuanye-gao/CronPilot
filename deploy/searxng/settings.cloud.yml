@@ -1,0 +1,55 @@
+use_default_settings: true
+
+general:
+  instance_name: CronPilot Search
+  debug: false
+
+search:
+  safe_search: 0
+  autocomplete: ""
+  default_lang: auto
+  formats:
+    - html
+    - json
+
+server:
+  bind_address: "0.0.0.0"
+  port: 8080
+  secret_key: "cronpilot-cloud-websearch-9c7a9cd8180c45f38e8be604bbd8e994"
+  limiter: false
+  image_proxy: false
+
+outgoing:
+  request_timeout: 10.0
+  max_request_timeout: 15.0
+  pool_connections: 50
+  pool_maxsize: 20
+
+# These engines are disabled in SearXNG defaults. Enabling China-reachable
+# providers prevents a mainland deployment from depending only on Google,
+# DuckDuckGo, Brave, or Startpage.
+engines:
+  - name: 360search
+    disabled: false
+    categories: [general, news]
+    timeout: 15.0
+  - name: baidu
+    disabled: false
+    categories: [general, news]
+    timeout: 15.0
+  - name: bing
+    disabled: false
+    categories: [general, news]
+    base_url: https://cn.bing.com
+    timeout: 15.0
+  - name: bing news
+    disabled: false
+    base_url: https://cn.bing.com
+    timeout: 15.0
+  - name: sogou
+    disabled: false
+    categories: [general, news]
+    timeout: 15.0
+  - name: sogou wechat
+    disabled: false
+    timeout: 15.0

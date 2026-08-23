@@ -1,0 +1,28 @@
+{
+  "containerPort": 8080,
+  "dockerfilePath": "Dockerfile",
+  "buildDir": "",
+  "minNum": 1,
+  "maxNum": 1,
+  "cpu": 1,
+  "mem": 2,
+  "policyType": "cpu",
+  "policyThreshold": 70,
+  "policyDetails": [
+    {
+      "PolicyType": "cpu",
+      "PolicyThreshold": 70
+    },
+    {
+      "PolicyType": "mem",
+      "PolicyThreshold": 75
+    }
+  ],
+  "envParams": {
+    "CRONPILOT_DATABASE_DRIVER": "mysql",
+    "CRONPILOT_SERVER_ADDRESS": "0.0.0.0:8080",
+    "CRONPILOT_LOG_FORMAT": "json",
+    "MYSQL_DATABASE": "cronpilot"
+  },
+  "customLogs": "stdout"
+}

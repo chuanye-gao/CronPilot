@@ -1,0 +1,17 @@
+.git
+.github
+.idea
+.vscode
+bin
+data
+*.db
+*.db-shm
+*.db-wal
+cronpilot.yaml
+.env
+.env.*
+Dockerfile*
+README.md
+web/node_modules
+.pnpm-store
+.cache

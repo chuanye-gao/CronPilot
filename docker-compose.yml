@@ -1,0 +1,63 @@
+services:
+  cronpilot:
+    build:
+      context: .
+      args:
+        HTTP_PROXY: ${HTTP_PROXY:-http://host.docker.internal:17891}
+        HTTPS_PROXY: ${HTTPS_PROXY:-http://host.docker.internal:17891}
+      extra_hosts:
+        - "host.docker.internal=${WINDOWS_HOST_IP:-192.168.208.1}"
+    image: cronpilot:local
+    restart: unless-stopped
+    ports:
+      - "18080:8080"
+    environment:
+      CRONPILOT_API_KEY: ${CRONPILOT_API_KEY:?Set CRONPILOT_API_KEY in the environment or .env file}
+      CRONPILOT_PUBLIC_URL: ${CRONPILOT_PUBLIC_URL:-http://127.0.0.1:18080}
+      CRONPILOT_SMTP_USERNAME: ${CRONPILOT_SMTP_USERNAME:-}
+      CRONPILOT_SMTP_PASSWORD: ${CRONPILOT_SMTP_PASSWORD:-}
+      HTTP_PROXY: ${HTTP_PROXY:-http://host.docker.internal:17891}
+      HTTPS_PROXY: ${HTTPS_PROXY:-http://host.docker.internal:17891}
+      NO_PROXY: 127.0.0.1,localhost,searxng
+    extra_hosts:
+      - "host.docker.internal:${WINDOWS_HOST_IP:-192.168.208.1}"
+    volumes:
+      - cronpilot-data:/data
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+    depends_on:
+      - searxng
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/health/ready"]
+      interval: 15s
+      timeout: 3s
+      start_period: 10s
+      retries: 3
+
+  searxng:
+    image: ghcr.io/searxng/searxng:2026.8.20-8d3dd0cd4@sha256:e7bb47bebf338c52c55c7bed92293873cfe757b554b261829c0d710fd8307fa3
+    restart: unless-stopped
+    environment:
+      SEARXNG_BASE_URL: http://searxng:8080/
+      HTTP_PROXY: ${HTTP_PROXY:-http://host.docker.internal:17891}
+      HTTPS_PROXY: ${HTTPS_PROXY:-http://host.docker.internal:17891}
+      NO_PROXY: 127.0.0.1,localhost,searxng
+    extra_hosts:
+      - "host.docker.internal:${WINDOWS_HOST_IP:-192.168.208.1}"
+    volumes:
+      - ./deploy/searxng/settings.yml:/etc/searxng/settings.yml:ro
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+      - /var/cache/searxng:size=64m,mode=0755
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  cronpilot-data:
+    name: cronpilot-preview-data

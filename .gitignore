@@ -12,6 +12,16 @@ cronpilot.yaml
 *.test
 *.out
 /vendor/
+/.cache/
+/web/node_modules/
+/web/tsconfig.tsbuildinfo
+/.pnpm-store/
+
+# Runtime data
+/data/
+*.db
+*.db-shm
+*.db-wal
 
 # IDE / OS
 .idea/

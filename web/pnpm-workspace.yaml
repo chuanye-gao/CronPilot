@@ -1,0 +1,7 @@
+packages:
+  - .
+
+allowBuilds:
+  esbuild: true
+overrides:
+  baseline-browser-mapping: 2.11.15
