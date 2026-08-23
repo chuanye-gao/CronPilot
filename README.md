@@ -1,94 +1,119 @@
-# CronPilot
+# wxcloudrun-golang
+[![GitHub license](https://img.shields.io/github/license/WeixinCloud/wxcloudrun-express)](https://github.com/WeixinCloud/wxcloudrun-express)
+![GitHub package.json dependency version (prod)](https://img.shields.io/badge/golang-1.17.1-green)
 
-**Schedule AI tasks like cron jobs.**
+微信云托管 golang 模版，实现简单的计数器读写接口，使用云托管 MySQL 读写、记录计数值。
 
-CronPilot is a small, self-hostable scheduler for recurring AI tasks. Define a cron expression and a prompt, point CronPilot at any OpenAI-compatible model API, and let it execute the task on schedule.
+![](https://qcloudimg.tencent-cloud.cn/raw/be22992d297d1b9a1a5365e606276781.png)
 
-The project deliberately starts with a narrow core:
 
-```text
-cron schedule -> AI task -> LLM -> result
+## 快速开始
+前往 [微信云托管快速开始页面](https://developers.weixin.qq.com/miniprogram/dev/wxcloudrun/src/basic/guide.html)，选择相应语言的模板，根据引导完成部署。
+
+## 本地调试
+下载代码在本地调试，请参考[微信云托管本地调试指南](https://developers.weixin.qq.com/miniprogram/dev/wxcloudrun/src/guide/debug/)
+
+## 实时开发
+代码变动时，不需要重新构建和启动容器，即可查看变动后的效果。请参考[微信云托管实时开发指南](https://developers.weixin.qq.com/miniprogram/dev/wxcloudrun/src/guide/debug/dev.html)
+
+## Dockerfile最佳实践
+请参考[如何提高项目构建效率](https://developers.weixin.qq.com/miniprogram/dev/wxcloudrun/src/scene/build/speed.html)
+
+## 目录结构说明
+~~~
+.
+├── Dockerfile                Dockerfile 文件
+├── LICENSE                   LICENSE 文件
+├── README.md                 README 文件
+├── container.config.json     模板部署「服务设置」初始化配置（二开请忽略）
+├── db                        数据库逻辑目录
+├── go.mod                    go.mod 文件
+├── go.sum                    go.sum 文件
+├── index.html                主页 html 
+├── main.go                   主函数入口
+└── service                   接口服务逻辑目录
+~~~
+
+
+## 服务 API 文档
+
+### `GET /api/count`
+
+获取当前计数
+
+#### 请求参数
+
+无
+
+#### 响应结果
+
+- `code`：错误码
+- `data`：当前计数值
+
+##### 响应结果示例
+
+```json
+{
+  "code": 0,
+  "data": 42
+}
 ```
 
-Delivery channels, web search, MCP tools, persistence, retries, and a web UI can be layered on top without turning the scheduler itself into a large framework.
+#### 调用示例
 
-## Status
-
-Early development. The current MVP supports:
-
-- YAML task definitions
-- Standard 5-field cron expressions
-- Configurable timezone
-- Multiple recurring tasks
-- Enable/disable per task
-- OpenAI-compatible `/chat/completions` endpoints
-- API keys from environment variables
-- Structured execution logs
-- Graceful shutdown
-
-## Quick start
-
-Requirements: Go 1.24+ and an OpenAI-compatible API endpoint.
-
-```bash
-git clone https://github.com/chuanye-gao/CronPilot.git
-cd CronPilot
-cp cronpilot.example.yaml cronpilot.yaml
-export CRONPILOT_API_KEY="your-api-key"
-go run ./cmd/cronpilot -config cronpilot.yaml
+```
+curl https://<云托管服务域名>/api/count
 ```
 
-On PowerShell:
 
-```powershell
-Copy-Item cronpilot.example.yaml cronpilot.yaml
-$env:CRONPILOT_API_KEY="your-api-key"
-go run ./cmd/cronpilot -config cronpilot.yaml
+
+### `POST /api/count`
+
+更新计数，自增或者清零
+
+#### 请求参数
+
+- `action`：`string` 类型，枚举值
+  - 等于 `"inc"` 时，表示计数加一
+  - 等于 `"clear"` 时，表示计数重置（清零）
+
+##### 请求参数示例
+
+```
+{
+  "action": "inc"
+}
 ```
 
-## Configuration
+#### 响应结果
 
-```yaml
-timezone: Asia/Singapore
+- `code`：错误码
+- `data`：当前计数值
 
-llm:
-  base_url: https://api.openai.com/v1
-  model: gpt-5
-  api_key: ""
+##### 响应结果示例
 
-tasks:
-  - name: daily-ai-brief
-    schedule: "0 8 * * *"
-    prompt: |
-      Summarize the most important AI developments from the last 24 hours.
+```json
+{
+  "code": 0,
+  "data": 42
+}
 ```
 
-Keep `api_key` empty and use `CRONPILOT_API_KEY` for secrets whenever possible.
+#### 调用示例
 
-## Project structure
-
-```text
-cmd/cronpilot/        CLI entrypoint
-internal/config/      YAML configuration
-internal/task/        task model
-internal/scheduler/   cron scheduling
-internal/runner/      task execution
-internal/llm/         model provider abstraction
+```
+curl -X POST -H 'content-type: application/json' -d '{"action": "inc"}' https://<云托管服务域名>/api/count
 ```
 
-## Roadmap
+## 使用注意
+如果不是通过微信云托管控制台部署模板代码，而是自行复制/下载模板代码后，手动新建一个服务并部署，需要在「服务设置」中补全以下环境变量，才可正常使用，否则会引发无法连接数据库，进而导致部署失败。
+- MYSQL_ADDRESS
+- MYSQL_PASSWORD
+- MYSQL_USERNAME
+以上三个变量的值请按实际情况填写。如果使用云托管内MySQL，可以在控制台MySQL页面获取相关信息。
 
-The intended evolution is incremental rather than framework-first:
 
-1. Reliable cron + LLM execution core
-2. Execution history and persistent task state
-3. Retry, timeout, concurrency, and failure policies
-4. Email and webhook delivery
-5. Web search and tool calling
-6. MCP integration
-7. HTTP API and web UI
-8. Multi-user/self-hosted deployment
 
-## Design principle
+## License
 
-CronPilot should make scheduled AI automation feel as simple as writing a cron job. The scheduler remains the center of the project; agent capabilities are extensions, not the foundation.
+[MIT](./LICENSE)

@@ -1,8 +1,8 @@
-module github.com/chuanye-gao/CronPilot
+module wxcloudrun-golang
 
-go 1.24.0
+go 1.16
 
 require (
-	github.com/robfig/cron/v3 v3.0.1
-	gopkg.in/yaml.v3 v3.0.1
+	gorm.io/driver/mysql v1.1.2
+	gorm.io/gorm v1.21.16
 )
