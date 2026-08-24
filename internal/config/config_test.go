@@ -143,6 +143,59 @@ func TestLoadGeminiFallbackFromEnvironment(t *testing.T) {
 	}
 }
 
+func TestLoadCloudflareRelayConfiguresGeminiAndTavily(t *testing.T) {
+	t.Setenv("CRONPILOT_RELAY_URL", "https://relay.example.com/")
+	t.Setenv("CRONPILOT_RELAY_KEY", "relay-secret")
+	t.Setenv("GEMINI_API_KEY", "must-not-be-used")
+	t.Setenv("TAVILY_API_KEY", "must-not-be-used")
+	path := writeConfig(t, "llm:\n  model: test\n  api_key: key\ntasks: []\n")
+
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if cfg.Relay.URL != "https://relay.example.com" || cfg.Relay.APIKey != "relay-secret" {
+		t.Fatalf("relay config = %#v", cfg.Relay)
+	}
+	if cfg.Gemini.BaseURL != "https://relay.example.com/v1/gemini/openai" || cfg.Gemini.APIKey != "relay-secret" {
+		t.Fatalf("Gemini relay config = %#v", cfg.Gemini)
+	}
+	if !cfg.WebSearch.Enabled || cfg.WebSearch.Provider != "tavily" || cfg.WebSearch.Endpoint != "https://relay.example.com/v1/tavily" || cfg.WebSearch.APIKey != "relay-secret" {
+		t.Fatalf("Tavily relay config = %#v", cfg.WebSearch)
+	}
+}
+
+func TestLoadRejectsIncompleteOrInsecureRelay(t *testing.T) {
+	tests := []struct {
+		name string
+		url  string
+		key  string
+	}{
+		{name: "missing key", url: "https://relay.example.com"},
+		{name: "missing URL", key: "relay-secret"},
+		{name: "remote HTTP", url: "http://relay.example.com", key: "relay-secret"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Setenv("CRONPILOT_RELAY_URL", test.url)
+			t.Setenv("CRONPILOT_RELAY_KEY", test.key)
+			path := writeConfig(t, "llm:\n  model: test\n  api_key: key\ntasks: []\n")
+			if _, err := Load(path); err == nil {
+				t.Fatal("Load() succeeded, want relay validation error")
+			}
+		})
+	}
+}
+
+func TestLoadAllowsLocalHTTPRelayForDevelopment(t *testing.T) {
+	t.Setenv("CRONPILOT_RELAY_URL", "http://127.0.0.1:8787")
+	t.Setenv("CRONPILOT_RELAY_KEY", "relay-secret")
+	path := writeConfig(t, "llm:\n  model: test\n  api_key: key\ntasks: []\n")
+	if _, err := Load(path); err != nil {
+		t.Fatalf("Load() local relay error = %v", err)
+	}
+}
+
 func TestLoadRejectsInvalidTaskSettings(t *testing.T) {
 	tests := map[string]string{
 		"schedule": `schedule: "not cron"`,

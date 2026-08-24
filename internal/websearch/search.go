@@ -187,6 +187,7 @@ func (a *Agent) searchTavily(ctx context.Context, request SearchRequest) ([]Resu
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", "Bearer "+a.config.APIKey)
 	req.Header.Set("User-Agent", a.config.UserAgent)
 	resp, err := a.searchHTTP.Do(req)
 	if err != nil {

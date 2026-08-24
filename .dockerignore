@@ -13,5 +13,7 @@ cronpilot.yaml
 Dockerfile*
 README.md
 web/node_modules
+relay/node_modules
+relay/.wrangler
 .pnpm-store
 .cache

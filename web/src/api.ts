@@ -1,4 +1,4 @@
-import type { AssistantMessage, EmailStatus, Execution, Health, Task, TaskAssistantDraft, TaskAssistantPlan, TaskInput, User } from "./types";
+import type { AssistantMessage, EmailStatus, Execution, Health, IntegrationName, IntegrationTest, Task, TaskAssistantDraft, TaskAssistantPlan, TaskInput, User } from "./types";
 
 export class APIError extends Error {
   constructor(public status: number, message: string) {
@@ -55,6 +55,7 @@ export const api = {
   run: (id: string) => request<Execution>(`/api/executions/${id}`),
   emailStatus: () => request<EmailStatus>("/api/email/status"),
   testEmail: (to: string) => request<{ status: string; to: string }>("/api/email/test", { method: "POST", body: JSON.stringify({ to }) }),
+  testIntegration: (name: IntegrationName) => request<IntegrationTest>(`/api/integrations/${name}/test`, { method: "POST" }),
   planTask: (language: "zh" | "en", messages: AssistantMessage[], draft: TaskAssistantDraft) => request<TaskAssistantPlan>("/api/task-assistant/plan", { method: "POST", body: JSON.stringify({ language, messages, draft }) }),
   testTaskDraft: (draft: TaskAssistantDraft) => request<TaskDraftTestJob>("/api/task-assistant/test", { method: "POST", body: JSON.stringify(draft) }),
   taskDraftTest: (id: string) => request<TaskDraftTestJob>(`/api/task-assistant/test/${encodeURIComponent(id)}`),

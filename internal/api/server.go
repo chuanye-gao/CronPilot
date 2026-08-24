@@ -45,6 +45,8 @@ type TaskAssistant interface {
 	Complete(context.Context, string) (string, error)
 }
 
+type IntegrationCheck func(context.Context) error
+
 type AuthService interface {
 	Register(context.Context, string, string, string) (auth.User, error)
 	VerifyEmail(context.Context, string) (auth.User, error)
@@ -72,6 +74,8 @@ type Options struct {
 	WebSearchConfigured bool
 	WebSearchProvider   string
 	WebSearchHealth     func(context.Context) error
+	RelayConfigured     bool
+	IntegrationChecks   map[string]IntegrationCheck
 }
 
 type Server struct {
@@ -93,6 +97,8 @@ type Server struct {
 	webSearchConfigured bool
 	webSearchProvider   string
 	webSearchHealth     func(context.Context) error
+	relayConfigured     bool
+	integrationChecks   map[string]IntegrationCheck
 	assistantTestsMu    sync.RWMutex
 	assistantTests      map[string]assistantTestJob
 }
@@ -122,6 +128,8 @@ func New(options Options) http.Handler {
 		webSearchConfigured: options.WebSearchConfigured,
 		webSearchProvider:   options.WebSearchProvider,
 		webSearchHealth:     options.WebSearchHealth,
+		relayConfigured:     options.RelayConfigured,
+		integrationChecks:   options.IntegrationChecks,
 		assistantTests:      make(map[string]assistantTestJob),
 	}
 	mux := http.NewServeMux()
@@ -144,6 +152,7 @@ func New(options Options) http.Handler {
 	mux.Handle("GET /api/executions/{id}", server.requireAuth(http.HandlerFunc(server.getExecution)))
 	mux.Handle("GET /api/email/status", server.requireAuth(http.HandlerFunc(server.emailStatus)))
 	mux.Handle("POST /api/email/test", server.requireAuth(http.HandlerFunc(server.testEmail)))
+	mux.Handle("POST /api/integrations/{name}/test", server.requireAuth(http.HandlerFunc(server.testIntegration)))
 	mux.Handle("POST /api/task-assistant/plan", server.requireAuth(http.HandlerFunc(server.planTask)))
 	mux.Handle("POST /api/task-assistant/test", server.requireAuth(http.HandlerFunc(server.testTaskDraft)))
 	mux.Handle("GET /api/task-assistant/test/{id}", server.requireAuth(http.HandlerFunc(server.getTaskDraftTest)))
@@ -291,6 +300,7 @@ func (s *Server) health(w http.ResponseWriter, r *http.Request) {
 		"web_search_configured": s.webSearchConfigured,
 		"web_search_status":     webSearchStatus,
 		"web_search_provider":   s.webSearchProvider,
+		"relay_configured":      s.relayConfigured,
 	})
 }
 
@@ -334,6 +344,55 @@ func (s *Server) testEmail(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) emailConfigured() bool {
 	return s.email != nil && s.email.Configured()
+}
+
+func (s *Server) testIntegration(w http.ResponseWriter, r *http.Request) {
+	name := strings.ToLower(strings.TrimSpace(r.PathValue("name")))
+	started := time.Now()
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	defer cancel()
+
+	var err error
+	if name == "email" {
+		if !s.emailConfigured() {
+			writeError(w, http.StatusServiceUnavailable, "email delivery is not configured")
+			return
+		}
+		recipient := requestUser(r.Context()).Email
+		if recipient == "" {
+			writeError(w, http.StatusBadRequest, "account email is unavailable")
+			return
+		}
+		err = s.email.SendTest(ctx, recipient)
+	} else {
+		check, ok := s.integrationChecks[name]
+		if !ok || check == nil {
+			writeError(w, http.StatusServiceUnavailable, "integration is not configured")
+			return
+		}
+		err = check(ctx)
+	}
+	duration := time.Since(started).Round(time.Millisecond)
+	if err != nil {
+		s.logger.Error("integration test failed", "integration", name, "duration", duration, "error", err)
+		writeJSON(w, http.StatusBadGateway, map[string]any{
+			"error":       fmt.Sprintf("%s test failed: %s", name, cleanIntegrationError(err)),
+			"integration": name, "status": "failed", "duration_ms": duration.Milliseconds(),
+		})
+		return
+	}
+	s.logger.Info("integration test completed", "integration", name, "duration", duration)
+	writeJSON(w, http.StatusOK, map[string]any{
+		"integration": name, "status": "healthy", "duration_ms": duration.Milliseconds(),
+	})
+}
+
+func cleanIntegrationError(err error) string {
+	message := strings.TrimSpace(err.Error())
+	if len(message) > 500 {
+		message = message[:500] + "…"
+	}
+	return message
 }
 
 func (s *Server) listTasks(w http.ResponseWriter, r *http.Request) {
@@ -569,6 +628,7 @@ func registerMethodFallbacks(mux *http.ServeMux) {
 		"/api/executions/{id}":          "GET, HEAD",
 		"/api/email/status":             "GET, HEAD",
 		"/api/email/test":               "POST",
+		"/api/integrations/{name}/test": "POST",
 		"/api/task-assistant/plan":      "POST",
 		"/api/task-assistant/test":      "POST",
 		"/api/task-assistant/test/{id}": "GET, HEAD",

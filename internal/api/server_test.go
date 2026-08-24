@@ -123,6 +123,28 @@ func TestEmailTestAPI(t *testing.T) {
 	}
 }
 
+func TestIntegrationTestAPI(t *testing.T) {
+	store := storage.NewMemory()
+	called := false
+	handler := New(Options{
+		Store: store, Runner: testRunner{store}, Scheduler: &testScheduler{tasks: make(map[string]task.Task)},
+		Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		IntegrationChecks: map[string]IntegrationCheck{
+			"database": func(context.Context) error { called = true; return nil },
+			"gemini":   func(context.Context) error { return errors.New("provider unavailable") },
+		},
+	})
+	result := requestJSON[map[string]any](t, handler, http.MethodPost, "/api/integrations/database/test", "", http.StatusOK)
+	if !called || result["status"] != "healthy" || result["integration"] != "database" {
+		t.Fatalf("integration result = %#v, called = %v", result, called)
+	}
+	failure := requestJSON[map[string]any](t, handler, http.MethodPost, "/api/integrations/gemini/test", "", http.StatusBadGateway)
+	if failure["status"] != "failed" || !strings.Contains(failure["error"].(string), "provider unavailable") {
+		t.Fatalf("integration failure = %#v", failure)
+	}
+	request(t, handler, http.MethodPost, "/api/integrations/tavily/test", "", http.StatusServiceUnavailable)
+}
+
 func TestRejectsTrailingJSONValue(t *testing.T) {
 	store := storage.NewMemory()
 	handler := New(Options{

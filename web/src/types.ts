@@ -54,6 +54,15 @@ export interface Health {
   web_search_configured: boolean;
   web_search_status: "healthy" | "unavailable" | "disabled";
   web_search_provider: string;
+  relay_configured: boolean;
+}
+
+export type IntegrationName = "database" | "deepseek" | "gemini" | "tavily" | "email";
+
+export interface IntegrationTest {
+  integration: IntegrationName;
+  status: "healthy" | "failed";
+  duration_ms: number;
 }
 
 export interface EmailStatus {

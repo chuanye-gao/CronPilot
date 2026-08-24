@@ -35,8 +35,8 @@ Dockerfile: Dockerfile
 
 ```text
 CRONPILOT_API_KEY=<DeepSeek API Key>
-TAVILY_API_KEY=<Tavily API Key>
-GEMINI_API_KEY=<Gemini API Key>
+CRONPILOT_RELAY_URL=https://<Cloudflare Worker 地址或自定义域名>
+CRONPILOT_RELAY_KEY=<独立的随机中继密钥>
 CRONPILOT_PUBLIC_URL=https://<正式域名>
 CRONPILOT_SERVER_ADDRESS=0.0.0.0:8080
 CRONPILOT_LOG_FORMAT=json
@@ -44,7 +44,7 @@ CRONPILOT_SMTP_USERNAME=<发件邮箱>
 CRONPILOT_SMTP_PASSWORD=<SMTP 授权码>
 ```
 
-只需添加 `TAVILY_API_KEY`，CronPilot 会自动启用 Tavily，不需要再设置搜索地址或部署第二个搜索容器。不要在微信云配置本机的 `127.0.0.1:17891` 或 `host.docker.internal` 代理地址。
+`TAVILY_API_KEY` 与 `GEMINI_API_KEY` 保存在 Cloudflare Worker Secrets 中，不再放到微信云。Worker 的部署步骤见 [Cloudflare Relay 指南](cloudflare-relay.md)。不需要第二个搜索容器，也不要在微信云配置本机的 `127.0.0.1:17891` 或 `host.docker.internal` 代理地址。
 
 ## 3. 流水线
 
@@ -53,8 +53,10 @@ CRONPILOT_SMTP_PASSWORD=<SMTP 授权码>
 首次发布后依次验证：
 
 1. `/health/live` 和 `/health/ready` 返回成功。
-2. `/api/health` 显示 `storage: mysql` 且 WebSearch 健康。
+2. `/api/health` 显示 `storage: mysql`、`relay_configured: true` 且 WebSearch 健康。
 3. 注册验证邮件可以收到，验证链接指向正式域名。
 4. 新建一条测试任务并执行，输出包含真实来源链接。
 5. 重启主服务后账号、任务和执行记录仍然存在。
 6. 保持最小和最大实例都为 1，确认次日晨报只发送一次。
+
+登录后还可以在“系统状态”页面分别真实测试数据库、DeepSeek、Gemini、Tavily 和邮件。Tavily 测试会消耗一次搜索额度，邮件测试会向当前账号邮箱发送一封真实邮件。

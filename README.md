@@ -105,6 +105,17 @@ GEMINI_API_KEY=your-gemini-api-key
 
 DeepSeek remains the primary model. CronPilot calls Gemini only when the primary request fails, returns an empty response, omits required research evidence, or begins with a clear refusal. Canceled and timed-out tasks are never retried through the fallback. The default is the low-cost `gemini-2.5-flash-lite`; override it with `GEMINI_MODEL` if needed. CronPilot uses Google's [OpenAI-compatible Gemini endpoint](https://ai.google.dev/gemini-api/docs/openai), so the same protected web-research tool loop works with both providers.
 
+### Cloudflare relay for mainland hosting
+
+When the main container cannot reliably reach Tavily or Gemini, deploy the narrow Worker in [`relay/`](relay/) and set only these two values on the main service:
+
+```text
+CRONPILOT_RELAY_URL=https://relay.example.com
+CRONPILOT_RELAY_KEY=a-separate-random-secret
+```
+
+Store `TAVILY_API_KEY`, `GEMINI_API_KEY`, and the same relay key as Cloudflare Worker Secrets. The relay accepts only the fixed Tavily Search/Extract and Gemini chat routes; it is not a general-purpose proxy. See the [Cloudflare relay deployment guide](deploy/cloudflare-relay.md).
+
 ### MySQL
 
 CronPilot automatically switches to MySQL when `MYSQL_ADDRESS` is present, or when `CRONPILOT_DATABASE_DRIVER=mysql` is set. It creates the target database when permitted and applies its tables automatically on startup:
@@ -217,7 +228,7 @@ Application logs are written to stdout. Set `CRONPILOT_LOG_FORMAT=json` for stru
 
 Use the existing GitHub repository instead of copying Weixin Cloud's Go counter template. The production Dockerfile builds the React frontend and Go backend from a clean checkout. Configure the main service with port `8080`, readiness path `/health/ready`, and exactly one always-on instance. The in-process scheduler does not yet support multiple active replicas.
 
-Add `TAVILY_API_KEY` to the main service's secrets. A second search service is no longer required. The older private SearXNG deployment remains documented as an optional fallback for installations that explicitly choose it.
+For mainland hosting, deploy the included Cloudflare Worker and add `CRONPILOT_RELAY_URL` plus `CRONPILOT_RELAY_KEY` to the main service. Keep the actual Tavily and Gemini keys in Cloudflare Secrets. A second search container is no longer required. Direct API keys remain supported for installations that can reach both providers reliably.
 
 See [the Weixin Cloud launch checklist](deploy/weixin-cloud.md) for required secrets, MySQL variables, service settings, and first-release verification.
 

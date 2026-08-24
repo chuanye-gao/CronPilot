@@ -1,0 +1,14 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "cronpilot-relay",
+  "main": "src/index.js",
+  "compatibility_date": "2026-08-25",
+  "workers_dev": true,
+  "secrets": {
+    "required": [
+      "CRONPILOT_RELAY_KEY",
+      "TAVILY_API_KEY",
+      "GEMINI_API_KEY"
+    ]
+  }
+}

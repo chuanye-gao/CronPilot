@@ -37,6 +37,13 @@ gemini:
   model: gemini-2.5-flash-lite
   api_key: ""
 
+# Optional narrow Cloudflare Worker relay. Prefer environment variables
+# CRONPILOT_RELAY_URL and CRONPILOT_RELAY_KEY in hosted environments.
+# When configured, it carries Tavily and Gemini traffic while DeepSeek remains direct.
+relay:
+  url: ""
+  api_key: ""
+
 # Adding TAVILY_API_KEY to the environment automatically enables Tavily even
 # when this section is disabled. Never commit the key to this file.
 web_search:

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -81,9 +82,10 @@ func main() {
 	primaryAssistant := llm.NewOpenAIClient(cfg.LLM.BaseURL, cfg.LLM.APIKey, cfg.LLM.Model)
 	var client llm.Client = primaryClient
 	var assistantClient llm.Client = primaryAssistant
+	var geminiAssistant llm.Client
 	if cfg.Gemini.APIKey != "" {
 		geminiClient := llm.NewOpenAIClient(cfg.Gemini.BaseURL, cfg.Gemini.APIKey, cfg.Gemini.Model, llmOptions...)
-		geminiAssistant := llm.NewOpenAIClient(cfg.Gemini.BaseURL, cfg.Gemini.APIKey, cfg.Gemini.Model)
+		geminiAssistant = llm.NewOpenAIClient(cfg.Gemini.BaseURL, cfg.Gemini.APIKey, cfg.Gemini.Model)
 		client = llm.NewFallbackClient(primaryClient, geminiClient, func(reason string) {
 			logger.Warn("switching task execution to fallback model", "reason", reason, "fallback_model", cfg.Gemini.Model)
 		})
@@ -176,6 +178,39 @@ func main() {
 	}
 
 	cronScheduler.Start()
+	integrationChecks := map[string]api.IntegrationCheck{
+		"database": func(ctx context.Context) error { return appStore.Ping(ctx) },
+		"deepseek": func(ctx context.Context) error {
+			output, checkErr := primaryAssistant.Complete(ctx, "Reply with exactly: OK")
+			if checkErr != nil {
+				return checkErr
+			}
+			if strings.TrimSpace(output) == "" {
+				return fmt.Errorf("model returned an empty response")
+			}
+			return nil
+		},
+	}
+	if geminiAssistant != nil {
+		integrationChecks["gemini"] = func(ctx context.Context) error {
+			output, checkErr := geminiAssistant.Complete(ctx, "Reply with exactly: OK")
+			if checkErr != nil {
+				return checkErr
+			}
+			if strings.TrimSpace(output) == "" {
+				return fmt.Errorf("model returned an empty response")
+			}
+			return nil
+		}
+	}
+	if searchAgent != nil {
+		integrationChecks["tavily"] = func(ctx context.Context) error {
+			_, searchErr := searchAgent.Search(ctx, websearch.SearchRequest{
+				Query: "latest artificial intelligence news", Category: "news", TimeRange: "day", Language: "en-US", MaxResults: 1,
+			})
+			return searchErr
+		}
+	}
 
 	httpServer := &http.Server{
 		Addr: cfg.Server.Address,
@@ -207,6 +242,8 @@ func main() {
 				}
 				return searchAgent.Health(ctx)
 			},
+			RelayConfigured:   cfg.Relay.URL != "",
+			IntegrationChecks: integrationChecks,
 			Readiness: func(ctx context.Context) error {
 				if err := appStore.Ping(ctx); err != nil {
 					return err

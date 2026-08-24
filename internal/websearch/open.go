@@ -125,6 +125,7 @@ func (a *Agent) openTavily(ctx context.Context, target string, maxChars int) (Op
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", "Bearer "+a.config.APIKey)
 	req.Header.Set("User-Agent", a.config.UserAgent)
 	resp, err := a.openHTTP.Do(req)
 	if err != nil {
