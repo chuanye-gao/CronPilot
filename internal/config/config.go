@@ -178,14 +178,6 @@ func Load(path string) (Config, error) {
 	if cfg.Gemini.APIKey == "" {
 		cfg.Gemini.APIKey = strings.TrimSpace(os.Getenv("GEMINI_API_KEY"))
 	}
-	if value := strings.TrimSpace(os.Getenv("CRONPILOT_WEB_SEARCH_PROVIDER")); value != "" {
-		cfg.WebSearch.Provider = value
-		cfg.WebSearch.Enabled = true
-	}
-	if value := strings.TrimSpace(os.Getenv("CRONPILOT_WEB_SEARCH_ENDPOINT")); value != "" {
-		cfg.WebSearch.Endpoint = value
-		cfg.WebSearch.Enabled = true
-	}
 	if cfg.WebSearch.APIKeyEnv == "" {
 		cfg.WebSearch.APIKeyEnv = "TAVILY_API_KEY"
 	}
@@ -193,17 +185,30 @@ func Load(path string) (Config, error) {
 	if cfg.WebSearch.APIKey == "" {
 		cfg.WebSearch.APIKey = apiKeyFromEnvironment
 	}
-	// A Tavily key is sufficient configuration in managed hosting: users only
-	// need to add one secret, without also editing the YAML file.
-	providerWasEmpty := strings.TrimSpace(cfg.WebSearch.Provider) == ""
-	if apiKeyFromEnvironment != "" && (providerWasEmpty || strings.EqualFold(cfg.WebSearch.Provider, "tavily")) {
-		cfg.WebSearch.Provider = "tavily"
+	providerFromEnvironment := strings.ToLower(strings.TrimSpace(os.Getenv("CRONPILOT_WEB_SEARCH_PROVIDER")))
+	endpointFromEnvironment := strings.TrimSpace(os.Getenv("CRONPILOT_WEB_SEARCH_ENDPOINT"))
+	switch {
+	case providerFromEnvironment != "":
+		cfg.WebSearch.Provider = providerFromEnvironment
 		cfg.WebSearch.Enabled = true
-		// Existing deployments may still carry the old SearXNG endpoint in their
-		// YAML. A newly added TAVILY_API_KEY must work without another setting.
-		if providerWasEmpty && !strings.Contains(strings.ToLower(cfg.WebSearch.Endpoint), "tavily") {
+		if endpointFromEnvironment != "" {
+			cfg.WebSearch.Endpoint = endpointFromEnvironment
+		} else if providerFromEnvironment == "tavily" {
 			cfg.WebSearch.Endpoint = "https://api.tavily.com"
 		}
+	case apiKeyFromEnvironment != "":
+		// TAVILY_API_KEY alone always selects the official Tavily endpoint. This
+		// deliberately ignores a stale SearXNG endpoint left in older deployments.
+		cfg.WebSearch.Provider = "tavily"
+		cfg.WebSearch.Enabled = true
+		cfg.WebSearch.Endpoint = "https://api.tavily.com"
+	case endpointFromEnvironment != "":
+		// CRONPILOT_WEB_SEARCH_ENDPOINT was the legacy one-variable SearXNG
+		// configuration. Preserve that behavior even though the current Docker
+		// template names Tavily as its disabled provider.
+		cfg.WebSearch.Provider = "searxng"
+		cfg.WebSearch.Endpoint = endpointFromEnvironment
+		cfg.WebSearch.Enabled = true
 	}
 	if cfg.WebSearch.Enabled {
 		cfg.WebSearch.Provider = strings.ToLower(strings.TrimSpace(cfg.WebSearch.Provider))

@@ -112,6 +112,7 @@ llm:
   api_key: key
 web_search:
   enabled: true
+  provider: tavily
   endpoint: http://searxng:8080
 tasks: []
 `)
