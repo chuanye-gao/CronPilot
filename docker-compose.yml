@@ -13,6 +13,9 @@ services:
       - "18080:8080"
     environment:
       CRONPILOT_API_KEY: ${CRONPILOT_API_KEY:?Set CRONPILOT_API_KEY in the environment or .env file}
+      TAVILY_API_KEY: ${TAVILY_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash-lite}
       CRONPILOT_PUBLIC_URL: ${CRONPILOT_PUBLIC_URL:-http://127.0.0.1:18080}
       CRONPILOT_SMTP_USERNAME: ${CRONPILOT_SMTP_USERNAME:-}
       CRONPILOT_SMTP_PASSWORD: ${CRONPILOT_SMTP_PASSWORD:-}
@@ -30,9 +33,6 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
-
-    depends_on:
-      - searxng
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/health/ready"]
       interval: 15s
@@ -41,6 +41,7 @@ services:
       retries: 3
 
   searxng:
+    profiles: ["searxng"]
     image: ghcr.io/searxng/searxng:2026.8.20-8d3dd0cd4@sha256:e7bb47bebf338c52c55c7bed92293873cfe757b554b261829c0d710fd8307fa3
     restart: unless-stopped
     environment:

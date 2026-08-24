@@ -16,11 +16,20 @@ llm:
   model: deepseek-v4-flash
   api_key: ""
 
+gemini:
+  base_url: https://generativelanguage.googleapis.com/v1beta/openai
+  model: gemini-2.5-flash-lite
+  api_key: ""
+
 # CronPilot owns the model tool loop, query orchestration, page extraction and
-# evidence handling. SearXNG is an internal, replaceable metasearch backend.
+# evidence handling. TAVILY_API_KEY is read directly from the environment.
 web_search:
-  enabled: true
-  endpoint: http://searxng:8080
+  # TAVILY_API_KEY automatically turns this on. Keeping it false lets the app
+  # start normally before the secret is added.
+  enabled: false
+  provider: tavily
+  endpoint: https://api.tavily.com
+  api_key_env: TAVILY_API_KEY
   timeout: 15s
   max_results: 12
   max_content_chars: 18000

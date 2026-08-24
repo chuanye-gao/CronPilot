@@ -33,7 +33,8 @@ Early development. The current MVP supports:
 - Per-user task and execution isolation
 - Structured execution logs and graceful shutdown
 - Model-driven `web_search` and `web_open` tool calls
-- Locally orchestrated multi-source search through SearXNG and bilingual news feeds
+- Tavily live search and managed article extraction, enabled by one environment variable
+- Optional self-hosted SearXNG search backend
 - Safe public-page extraction with private-network blocking, size limits, and prompt-injection boundaries
 - Source links and publication metadata for current-information tasks
 
@@ -94,6 +95,16 @@ tasks:
 
 Keep `api_key` empty and use `CRONPILOT_API_KEY` for secrets whenever possible.
 
+### Gemini fallback
+
+Add `GEMINI_API_KEY` to enable Gemini as the automatic fallback for both task runs and the task creation assistant:
+
+```text
+GEMINI_API_KEY=your-gemini-api-key
+```
+
+DeepSeek remains the primary model. CronPilot calls Gemini only when the primary request fails, returns an empty response, omits required research evidence, or begins with a clear refusal. Canceled and timed-out tasks are never retried through the fallback. The default is the low-cost `gemini-2.5-flash-lite`; override it with `GEMINI_MODEL` if needed. CronPilot uses Google's [OpenAI-compatible Gemini endpoint](https://ai.google.dev/gemini-api/docs/openai), so the same protected web-research tool loop works with both providers.
+
 ### MySQL
 
 CronPilot automatically switches to MySQL when `MYSQL_ADDRESS` is present, or when `CRONPILOT_DATABASE_DRIVER=mysql` is set. It creates the target database when permitted and applies its tables automatically on startup:
@@ -108,21 +119,33 @@ MYSQL_DATABASE=cronpilot
 
 Keep the database password in the deployment platform's secret manager. SQLite remains the local default and requires no MySQL variables.
 
-## Local web research
+## Web research with Tavily
 
-CronPilot owns the complete model tool loop. When a task needs current or externally verifiable information, the model can call `web_search` repeatedly, open selected sources with `web_open`, identify gaps, and continue researching before producing the final answer. SearXNG is an internal and replaceable discovery backend rather than part of the task model.
+CronPilot owns the complete model tool loop. When a task needs current or externally verifiable information, the model can call `web_search` repeatedly, open selected sources with `web_open`, identify gaps, and continue researching before producing the final answer.
+
+For hosted deployments, add the following secret. It is never exposed to the browser or returned by the health API:
+
+```text
+TAVILY_API_KEY=tvly-your-key
+```
+
+The presence of `TAVILY_API_KEY` automatically enables Tavily Search and Extract. The explicit equivalent is:
 
 ```yaml
 web_search:
   enabled: true
-  endpoint: http://127.0.0.1:8081
+  provider: tavily
+  endpoint: https://api.tavily.com
+  api_key_env: TAVILY_API_KEY
   timeout: 15s
   max_results: 12
   max_content_chars: 18000
   max_tool_rounds: 10
 ```
 
-The included Compose deployment starts a private SearXNG service automatically. It is not published on a host port; only CronPilot can access it over the Compose network. Current-news searches also combine English and Chinese news feeds so that one upstream engine cannot occupy the entire evidence set.
+Tavily searches use the news topic and recency window requested by the model. Opening a result uses Tavily Extract, which is more reliable than downloading arbitrary publisher pages from a mainland-hosted container. Search and extraction errors are retained in execution logs without logging the API key.
+
+SearXNG remains available as an optional self-hosted provider by setting `provider: searxng` and its internal `endpoint`.
 
 Web pages are treated as untrusted evidence. `web_open` only accepts public HTTP/HTTPS destinations, rejects loopback and private network addresses, limits redirects and response sizes, removes scripts/navigation/forms, and clearly tells the model to ignore instructions embedded in page content. Important current claims should still be confirmed by independent sources.
 
@@ -176,6 +199,8 @@ Create a local `.env` file, then start the deployment:
 ```powershell
 @"
 CRONPILOT_API_KEY=your-deepseek-api-key
+TAVILY_API_KEY=your-tavily-api-key
+GEMINI_API_KEY=your-gemini-api-key
 CRONPILOT_SMTP_USERNAME=your-qq-address@qq.com
 CRONPILOT_SMTP_PASSWORD=your-qq-smtp-authorization-code
 "@ | Set-Content .env
@@ -184,7 +209,7 @@ docker compose up --build -d
 
 Open [http://127.0.0.1:18080](http://127.0.0.1:18080). The included Docker configuration uses DeepSeek's OpenAI-compatible API with `deepseek-v4-flash` and QQ Mail SMTP for local deployment. Change `CRONPILOT_PUBLIC_URL` when the service is exposed through a LAN address or HTTPS domain so email verification links point to the reachable address.
 
-The Compose deployment stores SQLite data in the `cronpilot-data` volume, runs CronPilot as a non-root user with a read-only root filesystem, and checks `/health/ready`. SearXNG is reachable only inside the Compose network. SQLite deployments must run exactly one CronPilot replica to avoid duplicate scheduled executions.
+The Compose deployment stores SQLite data in the `cronpilot-data` volume, runs CronPilot as a non-root user with a read-only root filesystem, and checks `/health/ready`. SQLite deployments must run exactly one CronPilot replica to avoid duplicate scheduled executions.
 
 Application logs are written to stdout. Set `CRONPILOT_LOG_FORMAT=json` for structured production logs and use the container platform to collect and retain them.
 
@@ -192,7 +217,7 @@ Application logs are written to stdout. Set `CRONPILOT_LOG_FORMAT=json` for stru
 
 Use the existing GitHub repository instead of copying Weixin Cloud's Go counter template. The production Dockerfile builds the React frontend and Go backend from a clean checkout. Configure the main service with port `8080`, readiness path `/health/ready`, and exactly one always-on instance. The in-process scheduler does not yet support multiple active replicas.
 
-Deploy SearXNG as a second private service using `deploy/searxng/Dockerfile`, then set `CRONPILOT_WEB_SEARCH_ENDPOINT` on the main service to its service-to-service URL. The cloud search configuration enables Baidu, Bing China, and 360 Search because common overseas engines may be unreachable from a mainland container.
+Add `TAVILY_API_KEY` to the main service's secrets. A second search service is no longer required. The older private SearXNG deployment remains documented as an optional fallback for installations that explicitly choose it.
 
 See [the Weixin Cloud launch checklist](deploy/weixin-cloud.md) for required secrets, MySQL variables, service settings, and first-release verification.
 

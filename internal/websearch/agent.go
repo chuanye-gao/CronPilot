@@ -18,7 +18,9 @@ const (
 )
 
 type Config struct {
+	Provider        string
 	Endpoint        string
+	APIKey          string
 	Timeout         time.Duration
 	MaxResults      int
 	MaxContentChars int
@@ -34,9 +36,19 @@ type Agent struct {
 }
 
 func New(config Config, logger *slog.Logger) (*Agent, error) {
+	config.Provider = strings.ToLower(strings.TrimSpace(config.Provider))
+	if config.Provider == "" {
+		config.Provider = "searxng"
+	}
 	config.Endpoint = strings.TrimRight(strings.TrimSpace(config.Endpoint), "/")
 	if config.Endpoint == "" {
 		return nil, fmt.Errorf("web search endpoint is required")
+	}
+	if config.Provider != "searxng" && config.Provider != "tavily" {
+		return nil, fmt.Errorf("unsupported web search provider %q", config.Provider)
+	}
+	if config.Provider == "tavily" && strings.TrimSpace(config.APIKey) == "" {
+		return nil, fmt.Errorf("Tavily API key is required")
 	}
 	if config.Timeout <= 0 {
 		config.Timeout = 15 * time.Second
@@ -78,10 +90,18 @@ func (a *Agent) Tools() []llm.Tool {
 }
 
 func (a *Agent) Provider() string {
+	if a.config.Provider == "tavily" {
+		return "Tavily Search + Extract"
+	}
 	return "Local WebSearch Agent · SearXNG + News RSS"
 }
 
 func (a *Agent) Health(ctx context.Context) error {
+	// Tavily has no zero-cost health endpoint. Configuration validity is checked
+	// at startup and actual request failures are recorded on executions.
+	if a.config.Provider == "tavily" {
+		return nil
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, a.config.Endpoint+"/", nil)
 	if err != nil {
 		return err
@@ -106,7 +126,7 @@ func SystemPrompt(location *time.Location) func() string {
 		now := time.Now().In(location)
 		return fmt.Sprintf(`You are the execution agent for CronPilot. The current local date and time is %s (%s).
 
-You have access to CronPilot's locally orchestrated web research tools.
+You have access to CronPilot's managed web research tools.
 - For any task that depends on current, recent, changing, or externally verifiable information, you MUST use web_search before answering.
 - For broad topics, issue multiple focused searches covering different regions or subtopics. Use both Chinese and English queries when global coverage matters.
 - Use web_open on the strongest candidate sources to verify important facts. Continue searching when evidence is thin or conflicting.
@@ -124,7 +144,7 @@ type searchTool struct{ agent *Agent }
 func (t searchTool) Specification() llm.ToolSpecification {
 	return llm.ToolSpecification{
 		Name:        "web_search",
-		Description: "Search the live public web through CronPilot's local WebSearch Agent. Use repeatedly with focused Chinese and English queries for broad coverage. Returns titles, URLs, snippets, sources, and publication times when available.",
+		Description: "Search the live public web through CronPilot's configured search provider. Use repeatedly with focused Chinese and English queries for broad coverage. Returns titles, URLs, snippets, sources, and publication times when available.",
 		Parameters:  json.RawMessage(`{"type":"object","additionalProperties":false,"properties":{"query":{"type":"string","description":"A focused search query, preferably under 200 characters."},"category":{"type":"string","enum":["general","news"],"description":"Use news for current events and general for other web information."},"time_range":{"type":"string","enum":["day","week","month","year","none"],"description":"Publication recency filter."},"language":{"type":"string","enum":["auto","zh-CN","en-US"],"description":"Preferred search language."},"max_results":{"type":"integer","minimum":1,"maximum":20}},"required":["query"]}`),
 	}
 }

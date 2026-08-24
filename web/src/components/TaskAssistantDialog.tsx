@@ -24,7 +24,7 @@ export function TaskAssistantDialog({ onClose, onSave }: Props) {
   const { language, pick } = useLanguage();
   const [messages, setMessages] = useState<AssistantMessage[]>([{
     role: "assistant",
-    content: pick("告诉我你希望定期得到什么结果。我会帮你理清需求、设置时间并写好给 AI 的指令；需要实时信息时，任务会自动使用本机联网检索。", "Tell me what result you want on a recurring basis. I’ll clarify the goal, set the schedule, and write the AI instructions; tasks automatically use local web research when current information is needed."),
+    content: pick("告诉我你希望定期得到什么结果。我会帮你理清需求、设置时间并写好给 AI 的指令；需要实时信息时，任务会自动联网检索并附上来源。", "Tell me what result you want on a recurring basis. I’ll clarify the goal, set the schedule, and write the AI instructions; tasks automatically research the live web and cite sources when current information is needed."),
   }]);
   const [draft, setDraft] = useState<TaskAssistantDraft>({
     name: "", description: "", schedule: "", schedule_label: "", timezone: health?.timezone || "Asia/Shanghai",

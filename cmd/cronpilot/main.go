@@ -54,11 +54,13 @@ func main() {
 	llmOptions := make([]llm.OpenAIOption, 0, 4)
 	if cfg.WebSearch.Enabled {
 		searchAgent, err = websearch.New(websearch.Config{
+			Provider: cfg.WebSearch.Provider,
 			Endpoint: cfg.WebSearch.Endpoint, Timeout: time.Duration(cfg.WebSearch.Timeout),
+			APIKey:     cfg.WebSearch.APIKey,
 			MaxResults: cfg.WebSearch.MaxResults, MaxContentChars: cfg.WebSearch.MaxContentChars,
 		}, logger)
 		if err != nil {
-			logger.Error("configure local web search", "error", err)
+			logger.Error("configure web search", "error", err)
 			os.Exit(1)
 		}
 		llmOptions = append(llmOptions,
@@ -73,10 +75,23 @@ func main() {
 				logger.Info("model tool call completed", "tool", event.Name, "duration", event.Duration)
 			}),
 		)
-		logger.Info("local web search enabled", "provider", searchAgent.Provider(), "endpoint", cfg.WebSearch.Endpoint)
+		logger.Info("web search enabled", "provider", searchAgent.Provider(), "endpoint", cfg.WebSearch.Endpoint)
 	}
-	client := llm.NewOpenAIClient(cfg.LLM.BaseURL, cfg.LLM.APIKey, cfg.LLM.Model, llmOptions...)
-	assistantClient := llm.NewOpenAIClient(cfg.LLM.BaseURL, cfg.LLM.APIKey, cfg.LLM.Model)
+	primaryClient := llm.NewOpenAIClient(cfg.LLM.BaseURL, cfg.LLM.APIKey, cfg.LLM.Model, llmOptions...)
+	primaryAssistant := llm.NewOpenAIClient(cfg.LLM.BaseURL, cfg.LLM.APIKey, cfg.LLM.Model)
+	var client llm.Client = primaryClient
+	var assistantClient llm.Client = primaryAssistant
+	if cfg.Gemini.APIKey != "" {
+		geminiClient := llm.NewOpenAIClient(cfg.Gemini.BaseURL, cfg.Gemini.APIKey, cfg.Gemini.Model, llmOptions...)
+		geminiAssistant := llm.NewOpenAIClient(cfg.Gemini.BaseURL, cfg.Gemini.APIKey, cfg.Gemini.Model)
+		client = llm.NewFallbackClient(primaryClient, geminiClient, func(reason string) {
+			logger.Warn("switching task execution to fallback model", "reason", reason, "fallback_model", cfg.Gemini.Model)
+		})
+		assistantClient = llm.NewFallbackClient(primaryAssistant, geminiAssistant, func(reason string) {
+			logger.Warn("switching task assistant to fallback model", "reason", reason, "fallback_model", cfg.Gemini.Model)
+		})
+		logger.Info("fallback model enabled", "model", cfg.Gemini.Model)
+	}
 	emailDelivery := delivery.NewEmail(nil, "")
 	if cfg.Email.Host != "" {
 		smtpSender, smtpErr := delivery.NewSMTP(delivery.SMTPConfig{
@@ -171,6 +186,8 @@ func main() {
 			Logger:              logger,
 			DefaultTimezone:     location.String(),
 			Model:               cfg.LLM.Model,
+			FallbackModel:       cfg.Gemini.Model,
+			FallbackConfigured:  cfg.Gemini.APIKey != "",
 			ProviderConfigured:  cfg.LLM.APIKey != "",
 			Email:               emailDelivery,
 			Assistant:           assistantClient,

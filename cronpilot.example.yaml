@@ -31,11 +31,19 @@ llm:
   # Prefer the CRONPILOT_API_KEY environment variable.
   api_key: ""
 
-# Point this at a private SearXNG instance. CronPilot exposes it to the model
-# through its own safe web_search and web_open tools.
+# Optional fallback. Adding GEMINI_API_KEY automatically enables it.
+gemini:
+  base_url: https://generativelanguage.googleapis.com/v1beta/openai
+  model: gemini-2.5-flash-lite
+  api_key: ""
+
+# Adding TAVILY_API_KEY to the environment automatically enables Tavily even
+# when this section is disabled. Never commit the key to this file.
 web_search:
   enabled: false
-  endpoint: http://127.0.0.1:8081
+  provider: tavily
+  endpoint: https://api.tavily.com
+  api_key_env: TAVILY_API_KEY
   timeout: 15s
   max_results: 12
   max_content_chars: 18000

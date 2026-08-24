@@ -104,6 +104,44 @@ func TestLoadWebSearchDefaultsAndEnvironment(t *testing.T) {
 	}
 }
 
+func TestLoadTavilyFromSingleEnvironmentVariable(t *testing.T) {
+	t.Setenv("TAVILY_API_KEY", "tvly-test-secret")
+	path := writeConfig(t, `
+llm:
+  model: test
+  api_key: key
+web_search:
+  enabled: true
+  endpoint: http://searxng:8080
+tasks: []
+`)
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if !cfg.WebSearch.Enabled || cfg.WebSearch.Provider != "tavily" {
+		t.Fatalf("web search = %#v", cfg.WebSearch)
+	}
+	if cfg.WebSearch.Endpoint != "https://api.tavily.com" || cfg.WebSearch.APIKey != "tvly-test-secret" {
+		t.Fatalf("Tavily config = %#v", cfg.WebSearch)
+	}
+}
+
+func TestLoadGeminiFallbackFromEnvironment(t *testing.T) {
+	t.Setenv("GEMINI_API_KEY", "gemini-test-secret")
+	path := writeConfig(t, "llm:\n  model: test\n  api_key: key\ntasks: []\n")
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if cfg.Gemini.APIKey != "gemini-test-secret" || cfg.Gemini.Model != "gemini-2.5-flash-lite" {
+		t.Fatalf("Gemini config = %#v", cfg.Gemini)
+	}
+	if cfg.Gemini.BaseURL != "https://generativelanguage.googleapis.com/v1beta/openai" {
+		t.Fatalf("Gemini base URL = %q", cfg.Gemini.BaseURL)
+	}
+}
+
 func TestLoadRejectsInvalidTaskSettings(t *testing.T) {
 	tests := map[string]string{
 		"schedule": `schedule: "not cron"`,

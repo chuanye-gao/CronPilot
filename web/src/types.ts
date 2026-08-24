@@ -46,6 +46,8 @@ export interface Health {
   status: string;
   model: string;
   provider_configured: boolean;
+  fallback_model: string;
+  fallback_configured: boolean;
   timezone: string;
   email_configured: boolean;
   storage: string;

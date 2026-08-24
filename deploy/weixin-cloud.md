@@ -1,6 +1,6 @@
 # 微信云托管上线清单
 
-CronPilot 使用两个云托管服务：一个运行主应用，一个运行私有 SearXNG。主应用必须保持单实例常驻，避免定时任务漏跑或重复执行。
+CronPilot 只需要一个云托管主服务，并通过 Tavily API 完成新闻搜索和正文提取。主应用必须保持单实例常驻，避免定时任务漏跑或重复执行。
 
 ## 1. 数据库
 
@@ -16,21 +16,7 @@ MYSQL_DATABASE=cronpilot
 CRONPILOT_DATABASE_DRIVER=mysql
 ```
 
-## 2. SearXNG 服务
-
-从同一仓库创建第二个服务：
-
-```text
-Dockerfile: Dockerfile.search
-构建目录: 仓库根目录
-容器端口: 8080
-最小实例: 1
-最大实例: 1
-```
-
-不要把 SearXNG 暴露为一个无保护的公共搜索站点。优先使用同一环境的服务间访问地址，并把该地址配置到主服务的 `CRONPILOT_WEB_SEARCH_ENDPOINT`。
-
-## 3. CronPilot 主服务
+## 2. CronPilot 主服务
 
 从现有 GitHub 仓库创建服务，不要复制官方 Go 计数器模板：
 
@@ -49,17 +35,18 @@ Dockerfile: Dockerfile
 
 ```text
 CRONPILOT_API_KEY=<DeepSeek API Key>
+TAVILY_API_KEY=<Tavily API Key>
+GEMINI_API_KEY=<Gemini API Key>
 CRONPILOT_PUBLIC_URL=https://<正式域名>
 CRONPILOT_SERVER_ADDRESS=0.0.0.0:8080
 CRONPILOT_LOG_FORMAT=json
 CRONPILOT_SMTP_USERNAME=<发件邮箱>
 CRONPILOT_SMTP_PASSWORD=<SMTP 授权码>
-CRONPILOT_WEB_SEARCH_ENDPOINT=<SearXNG 服务间地址>
 ```
 
-不要在微信云配置本机的 `127.0.0.1:17891` 或 `host.docker.internal` 代理地址。云端如需代理，必须使用云端可以访问的代理服务。
+只需添加 `TAVILY_API_KEY`，CronPilot 会自动启用 Tavily，不需要再设置搜索地址或部署第二个搜索容器。不要在微信云配置本机的 `127.0.0.1:17891` 或 `host.docker.internal` 代理地址。
 
-## 4. 流水线
+## 3. 流水线
 
 微信云流水线监听 `main` 分支 Push。GitHub CI 会先校验前端、Go、单元测试和生产镜像。生产发布建议通过 Pull Request 合并到 `main`，避免未通过 CI 的提交直接上线。
 

@@ -1,6 +1,7 @@
 package websearch
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"encoding/xml"
@@ -85,7 +86,9 @@ func (a *Agent) Search(ctx context.Context, request SearchRequest) (SearchRespon
 	}
 
 	backends := []func(context.Context, SearchRequest) ([]Result, error){a.searchSearXNG}
-	if request.Category == "news" {
+	if a.config.Provider == "tavily" {
+		backends = []func(context.Context, SearchRequest) ([]Result, error){a.searchTavily}
+	} else if request.Category == "news" {
 		backends = append(backends,
 			func(ctx context.Context, value SearchRequest) ([]Result, error) {
 				return a.searchGoogleNews(ctx, value, "en-US", "US", "US:en")
@@ -143,6 +146,101 @@ func (a *Agent) Search(ctx context.Context, request SearchRequest) (SearchRespon
 	}
 	a.logger.Info("web search completed", "query", request.Query, "category", request.Category, "results", len(results), "backend_errors", len(errors))
 	return response, nil
+}
+
+type tavilySearchRequest struct {
+	APIKey        string `json:"api_key"`
+	Query         string `json:"query"`
+	Topic         string `json:"topic"`
+	SearchDepth   string `json:"search_depth"`
+	MaxResults    int    `json:"max_results"`
+	Days          int    `json:"days,omitempty"`
+	IncludeAnswer bool   `json:"include_answer"`
+	IncludeImages bool   `json:"include_images"`
+}
+
+type tavilySearchResponse struct {
+	Results []struct {
+		Title         string  `json:"title"`
+		URL           string  `json:"url"`
+		Content       string  `json:"content"`
+		Score         float64 `json:"score"`
+		PublishedDate string  `json:"published_date"`
+	} `json:"results"`
+}
+
+func (a *Agent) searchTavily(ctx context.Context, request SearchRequest) ([]Result, error) {
+	payload := tavilySearchRequest{
+		APIKey: a.config.APIKey, Query: request.Query, Topic: request.Category,
+		SearchDepth: "basic", MaxResults: request.MaxResults,
+	}
+	if request.Category == "news" {
+		payload.Days = tavilyDays(request.TimeRange)
+	}
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return nil, fmt.Errorf("encode Tavily search request: %w", err)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, a.config.Endpoint+"/search", bytes.NewReader(data))
+	if err != nil {
+		return nil, fmt.Errorf("prepare Tavily search request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", a.config.UserAgent)
+	resp, err := a.searchHTTP.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("Tavily search: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
+		return nil, fmt.Errorf("Tavily search returned %s: %s", resp.Status, cleanProviderError(body))
+	}
+	var decoded tavilySearchResponse
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 4<<20)).Decode(&decoded); err != nil {
+		return nil, fmt.Errorf("decode Tavily search response: %w", err)
+	}
+	results := make([]Result, 0, len(decoded.Results))
+	for _, value := range decoded.Results {
+		results = append(results, Result{
+			Title: cleanText(value.Title, 300), URL: strings.TrimSpace(value.URL),
+			Snippet: cleanText(value.Content, 1200), Source: sourceFromURL(value.URL),
+			PublishedAt: strings.TrimSpace(value.PublishedDate), Engines: []string{"tavily"}, Score: value.Score,
+		})
+	}
+	return results, nil
+}
+
+func tavilyDays(value string) int {
+	switch value {
+	case "day":
+		return 1
+	case "week":
+		return 7
+	case "month":
+		return 30
+	case "year":
+		return 365
+	default:
+		return 0
+	}
+}
+
+func sourceFromURL(value string) string {
+	parsed, err := url.Parse(value)
+	if err != nil {
+		return ""
+	}
+	return strings.TrimPrefix(strings.ToLower(parsed.Hostname()), "www.")
+}
+
+func cleanProviderError(value []byte) string {
+	message := cleanText(string(value), 500)
+	if message == "" {
+		return "empty response"
+	}
+	return message
 }
 
 type searxResponse struct {

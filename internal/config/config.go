@@ -19,7 +19,10 @@ type LLMConfig struct {
 
 type WebSearchConfig struct {
 	Enabled         bool          `yaml:"enabled"`
+	Provider        string        `yaml:"provider"`
 	Endpoint        string        `yaml:"endpoint"`
+	APIKey          string        `yaml:"api_key"`
+	APIKeyEnv       string        `yaml:"api_key_env"`
 	Timeout         task.Duration `yaml:"timeout"`
 	MaxResults      int           `yaml:"max_results"`
 	MaxContentChars int           `yaml:"max_content_chars"`
@@ -64,6 +67,7 @@ type Config struct {
 	Log       LogConfig       `yaml:"log"`
 	Email     EmailConfig     `yaml:"email"`
 	LLM       LLMConfig       `yaml:"llm"`
+	Gemini    LLMConfig       `yaml:"gemini"`
 	WebSearch WebSearchConfig `yaml:"web_search"`
 	Tasks     []task.Task     `yaml:"tasks"`
 }
@@ -159,13 +163,67 @@ func Load(path string) (Config, error) {
 	if cfg.LLM.APIKey == "" {
 		return Config{}, fmt.Errorf("llm.api_key or CRONPILOT_API_KEY is required")
 	}
+	if cfg.Gemini.BaseURL == "" {
+		cfg.Gemini.BaseURL = "https://generativelanguage.googleapis.com/v1beta/openai"
+	}
+	if value := strings.TrimSpace(os.Getenv("GEMINI_BASE_URL")); value != "" {
+		cfg.Gemini.BaseURL = value
+	}
+	if cfg.Gemini.Model == "" {
+		cfg.Gemini.Model = "gemini-2.5-flash-lite"
+	}
+	if value := strings.TrimSpace(os.Getenv("GEMINI_MODEL")); value != "" {
+		cfg.Gemini.Model = value
+	}
+	if cfg.Gemini.APIKey == "" {
+		cfg.Gemini.APIKey = strings.TrimSpace(os.Getenv("GEMINI_API_KEY"))
+	}
+	if value := strings.TrimSpace(os.Getenv("CRONPILOT_WEB_SEARCH_PROVIDER")); value != "" {
+		cfg.WebSearch.Provider = value
+		cfg.WebSearch.Enabled = true
+	}
 	if value := strings.TrimSpace(os.Getenv("CRONPILOT_WEB_SEARCH_ENDPOINT")); value != "" {
 		cfg.WebSearch.Endpoint = value
 		cfg.WebSearch.Enabled = true
 	}
+	if cfg.WebSearch.APIKeyEnv == "" {
+		cfg.WebSearch.APIKeyEnv = "TAVILY_API_KEY"
+	}
+	apiKeyFromEnvironment := strings.TrimSpace(os.Getenv(cfg.WebSearch.APIKeyEnv))
+	if cfg.WebSearch.APIKey == "" {
+		cfg.WebSearch.APIKey = apiKeyFromEnvironment
+	}
+	// A Tavily key is sufficient configuration in managed hosting: users only
+	// need to add one secret, without also editing the YAML file.
+	providerWasEmpty := strings.TrimSpace(cfg.WebSearch.Provider) == ""
+	if apiKeyFromEnvironment != "" && (providerWasEmpty || strings.EqualFold(cfg.WebSearch.Provider, "tavily")) {
+		cfg.WebSearch.Provider = "tavily"
+		cfg.WebSearch.Enabled = true
+		// Existing deployments may still carry the old SearXNG endpoint in their
+		// YAML. A newly added TAVILY_API_KEY must work without another setting.
+		if providerWasEmpty && !strings.Contains(strings.ToLower(cfg.WebSearch.Endpoint), "tavily") {
+			cfg.WebSearch.Endpoint = "https://api.tavily.com"
+		}
+	}
 	if cfg.WebSearch.Enabled {
-		if strings.TrimSpace(cfg.WebSearch.Endpoint) == "" {
-			cfg.WebSearch.Endpoint = "http://127.0.0.1:8081"
+		cfg.WebSearch.Provider = strings.ToLower(strings.TrimSpace(cfg.WebSearch.Provider))
+		if cfg.WebSearch.Provider == "" {
+			cfg.WebSearch.Provider = "searxng"
+		}
+		switch cfg.WebSearch.Provider {
+		case "tavily":
+			if cfg.WebSearch.APIKey == "" {
+				return Config{}, fmt.Errorf("web_search.api_key or %s is required for Tavily", cfg.WebSearch.APIKeyEnv)
+			}
+			if strings.TrimSpace(cfg.WebSearch.Endpoint) == "" {
+				cfg.WebSearch.Endpoint = "https://api.tavily.com"
+			}
+		case "searxng":
+			if strings.TrimSpace(cfg.WebSearch.Endpoint) == "" {
+				cfg.WebSearch.Endpoint = "http://127.0.0.1:8081"
+			}
+		default:
+			return Config{}, fmt.Errorf("web_search.provider must be tavily or searxng")
 		}
 		if cfg.WebSearch.Timeout == 0 {
 			cfg.WebSearch.Timeout = task.Duration(15 * time.Second)

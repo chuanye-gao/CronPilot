@@ -12,6 +12,7 @@ export function SystemPage() {
     { label: pick("任务调度", "Scheduler"), value: health?.status === "ok" ? pick("运行中", "Running") : pick("检查中", "Checking"), ok: health?.status === "ok" },
     { label: pick("数据库", "Database"), value: health?.storage || pick("未知", "Unknown"), ok: health?.storage === "sqlite" },
     { label: pick("AI 模型", "AI model"), value: health?.provider_configured ? health.model : pick("未配置", "Not configured"), ok: Boolean(health?.provider_configured) },
+    { label: pick("备用模型", "Fallback model"), value: health?.fallback_configured ? health.fallback_model : pick("未配置", "Not configured"), ok: Boolean(health?.fallback_configured) },
     { label: pick("联网检索", "Web research"), value: health?.web_search_status === "healthy" ? health.web_search_provider : health?.web_search_status === "unavailable" ? pick("暂时不可用", "Temporarily unavailable") : pick("未启用", "Disabled"), ok: health?.web_search_status === "healthy" },
     { label: pick("邮件服务", "Email"), value: email?.configured ? pick("已连接", "Connected") : pick("未配置", "Not configured"), ok: Boolean(email?.configured) },
   ];
