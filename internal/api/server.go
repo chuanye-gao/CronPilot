@@ -62,8 +62,6 @@ type Options struct {
 	Logger              *slog.Logger
 	DefaultTimezone     string
 	Model               string
-	FallbackModel       string
-	FallbackConfigured  bool
 	ProviderConfigured  bool
 	Email               EmailService
 	Assistant           TaskAssistant
@@ -85,8 +83,6 @@ type Server struct {
 	logger              *slog.Logger
 	defaultTimezone     string
 	model               string
-	fallbackModel       string
-	fallbackConfigured  bool
 	providerConfigured  bool
 	email               EmailService
 	assistant           TaskAssistant
@@ -116,8 +112,6 @@ func New(options Options) http.Handler {
 		logger:              options.Logger,
 		defaultTimezone:     options.DefaultTimezone,
 		model:               options.Model,
-		fallbackModel:       options.FallbackModel,
-		fallbackConfigured:  options.FallbackConfigured,
 		providerConfigured:  options.ProviderConfigured,
 		email:               options.Email,
 		assistant:           options.Assistant,
@@ -291,8 +285,6 @@ func (s *Server) health(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, statusCode, map[string]any{
 		"status":                status,
 		"model":                 s.model,
-		"fallback_model":        s.fallbackModel,
-		"fallback_configured":   s.fallbackConfigured,
 		"provider_configured":   s.providerConfigured,
 		"timezone":              s.defaultTimezone,
 		"email_configured":      s.emailConfigured(),

@@ -44,7 +44,7 @@ CRONPILOT_SMTP_USERNAME=<发件邮箱>
 CRONPILOT_SMTP_PASSWORD=<SMTP 授权码>
 ```
 
-`TAVILY_API_KEY` 与 `GEMINI_API_KEY` 保存在 Cloudflare Worker Secrets 中，不再放到微信云。Worker 的部署步骤见 [Cloudflare Relay 指南](cloudflare-relay.md)。不需要第二个搜索容器，也不要在微信云配置本机的 `127.0.0.1:17891` 或 `host.docker.internal` 代理地址。
+`TAVILY_API_KEY` 保存在 Cloudflare Worker Secrets 中，不再放到微信云。Worker 的部署步骤见 [Cloudflare Relay 指南](cloudflare-relay.md)。不需要第二个搜索容器，也不要在微信云配置本机的 `127.0.0.1:17891` 或 `host.docker.internal` 代理地址。
 
 ## 3. 流水线
 
@@ -59,4 +59,4 @@ CRONPILOT_SMTP_PASSWORD=<SMTP 授权码>
 5. 重启主服务后账号、任务和执行记录仍然存在。
 6. 保持最小和最大实例都为 1，确认次日晨报只发送一次。
 
-登录后还可以在“系统状态”页面分别真实测试数据库、DeepSeek、Gemini、Tavily 和邮件。Tavily 测试会消耗一次搜索额度，邮件测试会向当前账号邮箱发送一封真实邮件。
+登录后还可以在“系统状态”页面分别真实测试数据库、DeepSeek、Tavily 和邮件。Tavily 测试会消耗一次搜索额度，邮件测试会向当前账号邮箱发送一封真实邮件。

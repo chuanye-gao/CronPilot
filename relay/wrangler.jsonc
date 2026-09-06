@@ -7,8 +7,7 @@
   "secrets": {
     "required": [
       "CRONPILOT_RELAY_KEY",
-      "TAVILY_API_KEY",
-      "GEMINI_API_KEY"
+      "TAVILY_API_KEY"
     ]
   }
 }

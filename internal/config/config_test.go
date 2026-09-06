@@ -89,14 +89,14 @@ func TestLoadInfrastructureSettingsFromEnvironment(t *testing.T) {
 	}
 }
 
-func TestLoadWebSearchDefaultsAndEnvironment(t *testing.T) {
-	t.Setenv("CRONPILOT_WEB_SEARCH_ENDPOINT", "http://search.internal:8080")
+func TestLoadWebSearchDefaultsFromTavilyKey(t *testing.T) {
+	t.Setenv("TAVILY_API_KEY", "tvly-test-secret")
 	path := writeConfig(t, "llm:\n  model: test\n  api_key: key\ntasks: []\n")
 	cfg, err := Load(path)
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
-	if !cfg.WebSearch.Enabled || cfg.WebSearch.Endpoint != "http://search.internal:8080" {
+	if !cfg.WebSearch.Enabled || cfg.WebSearch.Provider != "tavily" || cfg.WebSearch.Endpoint != "https://api.tavily.com" {
 		t.Fatalf("web search = %#v", cfg.WebSearch)
 	}
 	if time.Duration(cfg.WebSearch.Timeout) != 15*time.Second || cfg.WebSearch.MaxResults != 12 || cfg.WebSearch.MaxContentChars != 18000 || cfg.WebSearch.MaxToolRounds != 4 {
@@ -113,7 +113,7 @@ llm:
 web_search:
   enabled: true
   provider: tavily
-  endpoint: http://searxng:8080
+  endpoint: http://stale-endpoint:8080
 tasks: []
 `)
 	cfg, err := Load(path)
@@ -128,25 +128,9 @@ tasks: []
 	}
 }
 
-func TestLoadGeminiFallbackFromEnvironment(t *testing.T) {
-	t.Setenv("GEMINI_API_KEY", "gemini-test-secret")
-	path := writeConfig(t, "llm:\n  model: test\n  api_key: key\ntasks: []\n")
-	cfg, err := Load(path)
-	if err != nil {
-		t.Fatalf("Load() error = %v", err)
-	}
-	if cfg.Gemini.APIKey != "gemini-test-secret" || cfg.Gemini.Model != "gemini-2.5-flash-lite" {
-		t.Fatalf("Gemini config = %#v", cfg.Gemini)
-	}
-	if cfg.Gemini.BaseURL != "https://generativelanguage.googleapis.com/v1beta/openai" {
-		t.Fatalf("Gemini base URL = %q", cfg.Gemini.BaseURL)
-	}
-}
-
-func TestLoadCloudflareRelayConfiguresGeminiAndTavily(t *testing.T) {
+func TestLoadCloudflareRelayConfiguresTavily(t *testing.T) {
 	t.Setenv("CRONPILOT_RELAY_URL", "https://relay.example.com/")
 	t.Setenv("CRONPILOT_RELAY_KEY", "relay-secret")
-	t.Setenv("GEMINI_API_KEY", "must-not-be-used")
 	t.Setenv("TAVILY_API_KEY", "must-not-be-used")
 	path := writeConfig(t, "llm:\n  model: test\n  api_key: key\ntasks: []\n")
 
@@ -156,9 +140,6 @@ func TestLoadCloudflareRelayConfiguresGeminiAndTavily(t *testing.T) {
 	}
 	if cfg.Relay.URL != "https://relay.example.com" || cfg.Relay.APIKey != "relay-secret" {
 		t.Fatalf("relay config = %#v", cfg.Relay)
-	}
-	if cfg.Gemini.BaseURL != "https://relay.example.com/v1/gemini/openai" || cfg.Gemini.APIKey != "relay-secret" {
-		t.Fatalf("Gemini relay config = %#v", cfg.Gemini)
 	}
 	if !cfg.WebSearch.Enabled || cfg.WebSearch.Provider != "tavily" || cfg.WebSearch.Endpoint != "https://relay.example.com/v1/tavily" || cfg.WebSearch.APIKey != "relay-secret" {
 		t.Fatalf("Tavily relay config = %#v", cfg.WebSearch)

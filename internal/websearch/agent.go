@@ -38,16 +38,16 @@ type Agent struct {
 func New(config Config, logger *slog.Logger) (*Agent, error) {
 	config.Provider = strings.ToLower(strings.TrimSpace(config.Provider))
 	if config.Provider == "" {
-		config.Provider = "searxng"
+		config.Provider = "tavily"
 	}
 	config.Endpoint = strings.TrimRight(strings.TrimSpace(config.Endpoint), "/")
 	if config.Endpoint == "" {
 		return nil, fmt.Errorf("web search endpoint is required")
 	}
-	if config.Provider != "searxng" && config.Provider != "tavily" {
+	if config.Provider != "tavily" {
 		return nil, fmt.Errorf("unsupported web search provider %q", config.Provider)
 	}
-	if config.Provider == "tavily" && strings.TrimSpace(config.APIKey) == "" {
+	if strings.TrimSpace(config.APIKey) == "" {
 		return nil, fmt.Errorf("Tavily API key is required")
 	}
 	if config.Timeout <= 0 {
@@ -90,31 +90,12 @@ func (a *Agent) Tools() []llm.Tool {
 }
 
 func (a *Agent) Provider() string {
-	if a.config.Provider == "tavily" {
-		return "Tavily Search + Extract"
-	}
-	return "Local WebSearch Agent · SearXNG + News RSS"
+	return "Tavily Search + Extract"
 }
 
-func (a *Agent) Health(ctx context.Context) error {
+func (a *Agent) Health(_ context.Context) error {
 	// Tavily has no zero-cost health endpoint. Configuration validity is checked
 	// at startup and actual request failures are recorded on executions.
-	if a.config.Provider == "tavily" {
-		return nil
-	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, a.config.Endpoint+"/", nil)
-	if err != nil {
-		return err
-	}
-	req.Header.Set("User-Agent", a.config.UserAgent)
-	resp, err := a.searchHTTP.Do(req)
-	if err != nil {
-		return fmt.Errorf("connect to local search backend: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode < 200 || resp.StatusCode >= 400 {
-		return fmt.Errorf("local search backend returned %s", resp.Status)
-	}
 	return nil
 }
 

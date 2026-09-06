@@ -16,11 +16,6 @@ llm:
   model: deepseek-v4-flash
   api_key: ""
 
-gemini:
-  base_url: https://generativelanguage.googleapis.com/v1beta/openai
-  model: gemini-2.5-flash-lite
-  api_key: ""
-
 # CronPilot owns the model tool loop, query orchestration, page extraction and
 # evidence handling. TAVILY_API_KEY is read directly from the environment.
 web_search:

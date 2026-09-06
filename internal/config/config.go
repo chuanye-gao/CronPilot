@@ -73,7 +73,6 @@ type Config struct {
 	Log       LogConfig       `yaml:"log"`
 	Email     EmailConfig     `yaml:"email"`
 	LLM       LLMConfig       `yaml:"llm"`
-	Gemini    LLMConfig       `yaml:"gemini"`
 	Relay     RelayConfig     `yaml:"relay"`
 	WebSearch WebSearchConfig `yaml:"web_search"`
 	Tasks     []task.Task     `yaml:"tasks"`
@@ -186,25 +185,6 @@ func Load(path string) (Config, error) {
 			return Config{}, fmt.Errorf("relay.url must be an HTTPS URL")
 		}
 	}
-	if cfg.Gemini.BaseURL == "" {
-		cfg.Gemini.BaseURL = "https://generativelanguage.googleapis.com/v1beta/openai"
-	}
-	if value := strings.TrimSpace(os.Getenv("GEMINI_BASE_URL")); value != "" {
-		cfg.Gemini.BaseURL = value
-	}
-	if cfg.Gemini.Model == "" {
-		cfg.Gemini.Model = "gemini-2.5-flash-lite"
-	}
-	if value := strings.TrimSpace(os.Getenv("GEMINI_MODEL")); value != "" {
-		cfg.Gemini.Model = value
-	}
-	if cfg.Gemini.APIKey == "" {
-		cfg.Gemini.APIKey = strings.TrimSpace(os.Getenv("GEMINI_API_KEY"))
-	}
-	if cfg.Relay.URL != "" {
-		cfg.Gemini.BaseURL = cfg.Relay.URL + "/v1/gemini/openai"
-		cfg.Gemini.APIKey = cfg.Relay.APIKey
-	}
 	if cfg.WebSearch.APIKeyEnv == "" {
 		cfg.WebSearch.APIKeyEnv = "TAVILY_API_KEY"
 	}
@@ -212,55 +192,31 @@ func Load(path string) (Config, error) {
 	if cfg.WebSearch.APIKey == "" {
 		cfg.WebSearch.APIKey = apiKeyFromEnvironment
 	}
-	providerFromEnvironment := strings.ToLower(strings.TrimSpace(os.Getenv("CRONPILOT_WEB_SEARCH_PROVIDER")))
-	endpointFromEnvironment := strings.TrimSpace(os.Getenv("CRONPILOT_WEB_SEARCH_ENDPOINT"))
 	switch {
 	case cfg.Relay.URL != "":
 		cfg.WebSearch.Provider = "tavily"
 		cfg.WebSearch.Endpoint = cfg.Relay.URL + "/v1/tavily"
 		cfg.WebSearch.APIKey = cfg.Relay.APIKey
 		cfg.WebSearch.Enabled = true
-	case providerFromEnvironment != "":
-		cfg.WebSearch.Provider = providerFromEnvironment
-		cfg.WebSearch.Enabled = true
-		if endpointFromEnvironment != "" {
-			cfg.WebSearch.Endpoint = endpointFromEnvironment
-		} else if providerFromEnvironment == "tavily" {
-			cfg.WebSearch.Endpoint = "https://api.tavily.com"
-		}
 	case apiKeyFromEnvironment != "":
-		// TAVILY_API_KEY alone always selects the official Tavily endpoint. This
-		// deliberately ignores a stale SearXNG endpoint left in older deployments.
+		// TAVILY_API_KEY alone always selects the official Tavily endpoint.
 		cfg.WebSearch.Provider = "tavily"
 		cfg.WebSearch.Enabled = true
 		cfg.WebSearch.Endpoint = "https://api.tavily.com"
-	case endpointFromEnvironment != "":
-		// CRONPILOT_WEB_SEARCH_ENDPOINT was the legacy one-variable SearXNG
-		// configuration. Preserve that behavior even though the current Docker
-		// template names Tavily as its disabled provider.
-		cfg.WebSearch.Provider = "searxng"
-		cfg.WebSearch.Endpoint = endpointFromEnvironment
-		cfg.WebSearch.Enabled = true
 	}
 	if cfg.WebSearch.Enabled {
 		cfg.WebSearch.Provider = strings.ToLower(strings.TrimSpace(cfg.WebSearch.Provider))
 		if cfg.WebSearch.Provider == "" {
-			cfg.WebSearch.Provider = "searxng"
+			cfg.WebSearch.Provider = "tavily"
 		}
-		switch cfg.WebSearch.Provider {
-		case "tavily":
-			if cfg.WebSearch.APIKey == "" {
-				return Config{}, fmt.Errorf("web_search.api_key or %s is required for Tavily", cfg.WebSearch.APIKeyEnv)
-			}
-			if strings.TrimSpace(cfg.WebSearch.Endpoint) == "" {
-				cfg.WebSearch.Endpoint = "https://api.tavily.com"
-			}
-		case "searxng":
-			if strings.TrimSpace(cfg.WebSearch.Endpoint) == "" {
-				cfg.WebSearch.Endpoint = "http://127.0.0.1:8081"
-			}
-		default:
-			return Config{}, fmt.Errorf("web_search.provider must be tavily or searxng")
+		if cfg.WebSearch.Provider != "tavily" {
+			return Config{}, fmt.Errorf("web_search.provider must be tavily")
+		}
+		if cfg.WebSearch.APIKey == "" {
+			return Config{}, fmt.Errorf("web_search.api_key or %s is required for Tavily", cfg.WebSearch.APIKeyEnv)
+		}
+		if strings.TrimSpace(cfg.WebSearch.Endpoint) == "" {
+			cfg.WebSearch.Endpoint = "https://api.tavily.com"
 		}
 		if cfg.WebSearch.Timeout == 0 {
 			cfg.WebSearch.Timeout = task.Duration(15 * time.Second)

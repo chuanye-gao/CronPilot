@@ -131,14 +131,14 @@ func TestIntegrationTestAPI(t *testing.T) {
 		Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
 		IntegrationChecks: map[string]IntegrationCheck{
 			"database": func(context.Context) error { called = true; return nil },
-			"gemini":   func(context.Context) error { return errors.New("provider unavailable") },
+			"deepseek": func(context.Context) error { return errors.New("provider unavailable") },
 		},
 	})
 	result := requestJSON[map[string]any](t, handler, http.MethodPost, "/api/integrations/database/test", "", http.StatusOK)
 	if !called || result["status"] != "healthy" || result["integration"] != "database" {
 		t.Fatalf("integration result = %#v, called = %v", result, called)
 	}
-	failure := requestJSON[map[string]any](t, handler, http.MethodPost, "/api/integrations/gemini/test", "", http.StatusBadGateway)
+	failure := requestJSON[map[string]any](t, handler, http.MethodPost, "/api/integrations/deepseek/test", "", http.StatusBadGateway)
 	if failure["status"] != "failed" || !strings.Contains(failure["error"].(string), "provider unavailable") {
 		t.Fatalf("integration failure = %#v", failure)
 	}

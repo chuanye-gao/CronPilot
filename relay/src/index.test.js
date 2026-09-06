@@ -5,7 +5,6 @@ import worker from "./index.js";
 const env = {
   CRONPILOT_RELAY_KEY: "relay-secret",
   TAVILY_API_KEY: "tavily-secret",
-  GEMINI_API_KEY: "gemini-secret",
 };
 
 test("health endpoint is public", async () => {

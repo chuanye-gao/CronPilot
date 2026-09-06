@@ -46,8 +46,6 @@ export interface Health {
   status: string;
   model: string;
   provider_configured: boolean;
-  fallback_model: string;
-  fallback_configured: boolean;
   timezone: string;
   email_configured: boolean;
   storage: string;
@@ -57,7 +55,7 @@ export interface Health {
   relay_configured: boolean;
 }
 
-export type IntegrationName = "database" | "deepseek" | "gemini" | "tavily" | "email";
+export type IntegrationName = "database" | "deepseek" | "tavily" | "email";
 
 export interface IntegrationTest {
   integration: IntegrationName;

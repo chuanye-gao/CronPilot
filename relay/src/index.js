@@ -21,8 +21,6 @@ export default {
           return forwardTavily("search", body, env.TAVILY_API_KEY);
         case "/v1/tavily/extract":
           return forwardTavily("extract", body, env.TAVILY_API_KEY);
-        case "/v1/gemini/openai/chat/completions":
-          return forwardGemini(body, env.GEMINI_API_KEY);
         default:
           return json({ error: "not found" }, 404);
       }
@@ -70,13 +68,6 @@ async function forwardTavily(operation, body, apiKey) {
   if (!apiKey) return json({ error: "Tavily is not configured" }, 503);
   const payload = { ...body, api_key: apiKey };
   return forward(`https://api.tavily.com/${operation}`, payload, { Authorization: `Bearer ${apiKey}` });
-}
-
-async function forwardGemini(body, apiKey) {
-  if (!apiKey) return json({ error: "Gemini is not configured" }, 503);
-  return forward("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", body, {
-    Authorization: `Bearer ${apiKey}`,
-  });
 }
 
 async function forward(target, body, extraHeaders) {

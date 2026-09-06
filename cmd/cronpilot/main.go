@@ -80,20 +80,8 @@ func main() {
 	}
 	primaryClient := llm.NewOpenAIClient(cfg.LLM.BaseURL, cfg.LLM.APIKey, cfg.LLM.Model, llmOptions...)
 	primaryAssistant := llm.NewOpenAIClient(cfg.LLM.BaseURL, cfg.LLM.APIKey, cfg.LLM.Model)
-	var client llm.Client = primaryClient
-	var assistantClient llm.Client = primaryAssistant
-	var geminiAssistant llm.Client
-	if cfg.Gemini.APIKey != "" {
-		geminiClient := llm.NewOpenAIClient(cfg.Gemini.BaseURL, cfg.Gemini.APIKey, cfg.Gemini.Model, llmOptions...)
-		geminiAssistant = llm.NewOpenAIClient(cfg.Gemini.BaseURL, cfg.Gemini.APIKey, cfg.Gemini.Model)
-		client = llm.NewFallbackClient(primaryClient, geminiClient, func(reason string) {
-			logger.Warn("switching task execution to fallback model", "reason", reason, "fallback_model", cfg.Gemini.Model)
-		})
-		assistantClient = llm.NewFallbackClient(primaryAssistant, geminiAssistant, func(reason string) {
-			logger.Warn("switching task assistant to fallback model", "reason", reason, "fallback_model", cfg.Gemini.Model)
-		})
-		logger.Info("fallback model enabled", "model", cfg.Gemini.Model)
-	}
+	client := primaryClient
+	assistantClient := primaryAssistant
 	emailDelivery := delivery.NewEmail(nil, "")
 	if cfg.Email.Host != "" {
 		smtpSender, smtpErr := delivery.NewSMTP(delivery.SMTPConfig{
@@ -191,18 +179,6 @@ func main() {
 			return nil
 		},
 	}
-	if geminiAssistant != nil {
-		integrationChecks["gemini"] = func(ctx context.Context) error {
-			output, checkErr := geminiAssistant.Complete(ctx, "Reply with exactly: OK")
-			if checkErr != nil {
-				return checkErr
-			}
-			if strings.TrimSpace(output) == "" {
-				return fmt.Errorf("model returned an empty response")
-			}
-			return nil
-		}
-	}
 	if searchAgent != nil {
 		integrationChecks["tavily"] = func(ctx context.Context) error {
 			_, searchErr := searchAgent.Search(ctx, websearch.SearchRequest{
@@ -221,8 +197,6 @@ func main() {
 			Logger:              logger,
 			DefaultTimezone:     location.String(),
 			Model:               cfg.LLM.Model,
-			FallbackModel:       cfg.Gemini.Model,
-			FallbackConfigured:  cfg.Gemini.APIKey != "",
 			ProviderConfigured:  cfg.LLM.APIKey != "",
 			Email:               emailDelivery,
 			Assistant:           assistantClient,
