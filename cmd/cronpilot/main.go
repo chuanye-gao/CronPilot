@@ -216,7 +216,6 @@ func main() {
 				}
 				return searchAgent.Health(ctx)
 			},
-			RelayConfigured:   cfg.Relay.URL != "",
 			IntegrationChecks: integrationChecks,
 			Readiness: func(ctx context.Context) error {
 				if err := appStore.Ping(ctx); err != nil {

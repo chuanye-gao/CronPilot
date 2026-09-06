@@ -14,9 +14,6 @@ cronpilot.yaml
 /vendor/
 /.cache/
 /web/node_modules/
-/relay/node_modules/
-/relay/.wrangler/
-/relay/.dev.vars
 /web/tsconfig.tsbuildinfo
 /.pnpm-store/
 

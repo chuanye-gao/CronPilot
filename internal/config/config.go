@@ -3,7 +3,6 @@ package config
 import (
 	"fmt"
 	"net/mail"
-	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -16,11 +15,6 @@ type LLMConfig struct {
 	BaseURL string `yaml:"base_url"`
 	APIKey  string `yaml:"api_key"`
 	Model   string `yaml:"model"`
-}
-
-type RelayConfig struct {
-	URL    string `yaml:"url"`
-	APIKey string `yaml:"api_key"`
 }
 
 type WebSearchConfig struct {
@@ -73,7 +67,6 @@ type Config struct {
 	Log       LogConfig       `yaml:"log"`
 	Email     EmailConfig     `yaml:"email"`
 	LLM       LLMConfig       `yaml:"llm"`
-	Relay     RelayConfig     `yaml:"relay"`
 	WebSearch WebSearchConfig `yaml:"web_search"`
 	Tasks     []task.Task     `yaml:"tasks"`
 }
@@ -169,22 +162,6 @@ func Load(path string) (Config, error) {
 	if cfg.LLM.APIKey == "" {
 		return Config{}, fmt.Errorf("llm.api_key or CRONPILOT_API_KEY is required")
 	}
-	if value := strings.TrimSpace(os.Getenv("CRONPILOT_RELAY_URL")); value != "" {
-		cfg.Relay.URL = value
-	}
-	if cfg.Relay.APIKey == "" {
-		cfg.Relay.APIKey = strings.TrimSpace(os.Getenv("CRONPILOT_RELAY_KEY"))
-	}
-	if cfg.Relay.URL != "" || cfg.Relay.APIKey != "" {
-		cfg.Relay.URL = strings.TrimRight(strings.TrimSpace(cfg.Relay.URL), "/")
-		if cfg.Relay.URL == "" || cfg.Relay.APIKey == "" {
-			return Config{}, fmt.Errorf("CRONPILOT_RELAY_URL and CRONPILOT_RELAY_KEY must be configured together")
-		}
-		parsedRelayURL, parseErr := url.Parse(cfg.Relay.URL)
-		if parseErr != nil || parsedRelayURL.Host == "" || (parsedRelayURL.Scheme != "https" && !isLocalHTTPRelay(parsedRelayURL)) {
-			return Config{}, fmt.Errorf("relay.url must be an HTTPS URL")
-		}
-	}
 	if cfg.WebSearch.APIKeyEnv == "" {
 		cfg.WebSearch.APIKeyEnv = "TAVILY_API_KEY"
 	}
@@ -192,13 +169,7 @@ func Load(path string) (Config, error) {
 	if cfg.WebSearch.APIKey == "" {
 		cfg.WebSearch.APIKey = apiKeyFromEnvironment
 	}
-	switch {
-	case cfg.Relay.URL != "":
-		cfg.WebSearch.Provider = "tavily"
-		cfg.WebSearch.Endpoint = cfg.Relay.URL + "/v1/tavily"
-		cfg.WebSearch.APIKey = cfg.Relay.APIKey
-		cfg.WebSearch.Enabled = true
-	case apiKeyFromEnvironment != "":
+	if apiKeyFromEnvironment != "" {
 		// TAVILY_API_KEY alone always selects the official Tavily endpoint.
 		cfg.WebSearch.Provider = "tavily"
 		cfg.WebSearch.Enabled = true
@@ -251,14 +222,6 @@ func Load(path string) (Config, error) {
 		}
 	}
 	return cfg, nil
-}
-
-func isLocalHTTPRelay(value *url.URL) bool {
-	if value == nil || value.Scheme != "http" {
-		return false
-	}
-	host := strings.ToLower(value.Hostname())
-	return host == "127.0.0.1" || host == "localhost" || host == "::1"
 }
 
 func applyDatabaseEnvironment(cfg *DatabaseConfig) {

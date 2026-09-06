@@ -94,17 +94,6 @@ tasks:
 
 Keep `api_key` empty and use `CRONPILOT_API_KEY` for secrets whenever possible.
 
-### Cloudflare relay for mainland hosting
-
-When the main container cannot reliably reach Tavily, deploy the narrow Worker in [`relay/`](relay/) and set only these two values on the main service:
-
-```text
-CRONPILOT_RELAY_URL=https://relay.example.com
-CRONPILOT_RELAY_KEY=a-separate-random-secret
-```
-
-Store `TAVILY_API_KEY` and the same relay key as Cloudflare Worker Secrets. The relay accepts only the fixed Tavily Search/Extract routes; it is not a general-purpose proxy. See the [Cloudflare relay deployment guide](deploy/cloudflare-relay.md).
-
 ### MySQL
 
 CronPilot automatically switches to MySQL when `MYSQL_ADDRESS` is present, or when `CRONPILOT_DATABASE_DRIVER=mysql` is set. It creates the target database when permitted and applies its tables automatically on startup:
@@ -214,7 +203,7 @@ Application logs are written to stdout. Set `CRONPILOT_LOG_FORMAT=json` for stru
 
 Use the existing GitHub repository instead of copying Weixin Cloud's Go counter template. The production Dockerfile builds the React frontend and Go backend from a clean checkout. Configure the main service with port `8080`, readiness path `/health/ready`, and exactly one always-on instance. The in-process scheduler does not yet support multiple active replicas.
 
-For mainland hosting, deploy the included Cloudflare Worker and add `CRONPILOT_RELAY_URL` plus `CRONPILOT_RELAY_KEY` to the main service. Keep the actual Tavily key in Cloudflare Secrets. A second search container is no longer required. Direct API keys remain supported for installations that can reach both providers reliably.
+Search runs on Tavily directly: configure `TAVILY_API_KEY` on the main service. No second search container is required.
 
 See [the Weixin Cloud launch checklist](deploy/weixin-cloud.md) for required secrets, MySQL variables, service settings, and first-release verification.
 

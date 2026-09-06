@@ -35,8 +35,7 @@ Dockerfile: Dockerfile
 
 ```text
 CRONPILOT_API_KEY=<DeepSeek API Key>
-CRONPILOT_RELAY_URL=https://<Cloudflare Worker 地址或自定义域名>
-CRONPILOT_RELAY_KEY=<独立的随机中继密钥>
+TAVILY_API_KEY=<Tavily API Key>
 CRONPILOT_PUBLIC_URL=https://<正式域名>
 CRONPILOT_SERVER_ADDRESS=0.0.0.0:8080
 CRONPILOT_LOG_FORMAT=json
@@ -44,7 +43,7 @@ CRONPILOT_SMTP_USERNAME=<发件邮箱>
 CRONPILOT_SMTP_PASSWORD=<SMTP 授权码>
 ```
 
-`TAVILY_API_KEY` 保存在 Cloudflare Worker Secrets 中，不再放到微信云。Worker 的部署步骤见 [Cloudflare Relay 指南](cloudflare-relay.md)。不需要第二个搜索容器，也不要在微信云配置本机的 `127.0.0.1:17891` 或 `host.docker.internal` 代理地址。
+`TAVILY_API_KEY` 直接配置在主服务，搜索请求直连 Tavily。不需要第二个搜索容器或 Cloudflare Worker 中继。
 
 ## 3. 流水线
 
@@ -53,7 +52,7 @@ CRONPILOT_SMTP_PASSWORD=<SMTP 授权码>
 首次发布后依次验证：
 
 1. `/health/live` 和 `/health/ready` 返回成功。
-2. `/api/health` 显示 `storage: mysql`、`relay_configured: true` 且 WebSearch 健康。
+2. `/api/health` 显示 `storage: mysql` 且 WebSearch 健康。
 3. 注册验证邮件可以收到，验证链接指向正式域名。
 4. 新建一条测试任务并执行，输出包含真实来源链接。
 5. 重启主服务后账号、任务和执行记录仍然存在。

@@ -72,7 +72,6 @@ type Options struct {
 	WebSearchConfigured bool
 	WebSearchProvider   string
 	WebSearchHealth     func(context.Context) error
-	RelayConfigured     bool
 	IntegrationChecks   map[string]IntegrationCheck
 }
 
@@ -93,7 +92,6 @@ type Server struct {
 	webSearchConfigured bool
 	webSearchProvider   string
 	webSearchHealth     func(context.Context) error
-	relayConfigured     bool
 	integrationChecks   map[string]IntegrationCheck
 	assistantTestsMu    sync.RWMutex
 	assistantTests      map[string]assistantTestJob
@@ -122,7 +120,6 @@ func New(options Options) http.Handler {
 		webSearchConfigured: options.WebSearchConfigured,
 		webSearchProvider:   options.WebSearchProvider,
 		webSearchHealth:     options.WebSearchHealth,
-		relayConfigured:     options.RelayConfigured,
 		integrationChecks:   options.IntegrationChecks,
 		assistantTests:      make(map[string]assistantTestJob),
 	}
@@ -292,7 +289,6 @@ func (s *Server) health(w http.ResponseWriter, r *http.Request) {
 		"web_search_configured": s.webSearchConfigured,
 		"web_search_status":     webSearchStatus,
 		"web_search_provider":   s.webSearchProvider,
-		"relay_configured":      s.relayConfigured,
 	})
 }
 

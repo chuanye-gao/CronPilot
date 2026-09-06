@@ -6,7 +6,6 @@ require (
 	github.com/go-sql-driver/mysql v1.9.3
 	github.com/robfig/cron/v3 v3.0.1
 	golang.org/x/crypto v0.41.0
-	golang.org/x/net v0.43.0
 	gopkg.in/yaml.v3 v3.0.1
 	modernc.org/sqlite v1.39.1
 )
