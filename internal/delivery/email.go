@@ -132,6 +132,24 @@ func executionText(value task.Task, run execution.Execution, result string) stri
 	return fmt.Sprintf("CronPilot task: %s\nStatus: %s\nStarted: %s\nFinished: %s\nAttempts: %d\nExecution: %s\n\nResult\n------\n%s\n", value.Name, strings.ToUpper(string(run.Status)), run.StartedAt.Format(time.RFC1123Z), finished, run.Attempts, run.ID, result)
 }
 
+const emailStyles = `.result h1{font-size:22px;margin:18px 0 10px;color:#eef3ef;line-height:1.3}
+.result h2{font-size:19px;margin:16px 0 8px;color:#eef3ef;line-height:1.3}
+.result h3{font-size:17px;margin:14px 0 6px;color:#eef3ef;line-height:1.3}
+.result h4,.result h5,.result h6{font-size:15px;margin:12px 0 6px;color:#eef3ef}
+.result p{margin:10px 0}
+.result ul,.result ol{margin:10px 0;padding-left:24px}
+.result li{margin:4px 0;line-height:1.6}
+.result a{color:#7ee787;text-decoration:underline}
+.result code{background:#1a211e;border-radius:4px;padding:2px 5px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:13px;color:#e2e8e4}
+.result pre{background:#0b0f0d;border:1px solid #29302c;border-radius:8px;padding:14px 16px;overflow-x:auto;margin:12px 0}
+.result pre code{background:none;padding:0;font-size:13px;color:#c9d1cc}
+.result blockquote{border-left:3px solid #3a423e;margin:12px 0;padding:2px 0 2px 14px;color:#9aa49e}
+.result hr{border:0;border-top:1px solid #252b28;margin:18px 0}
+.result table{border-collapse:collapse;margin:12px 0;width:100%}
+.result th,.result td{border:1px solid #29302c;padding:8px 10px;font-size:14px;text-align:left}
+.result th{background:#161b19;color:#eef3ef}
+.result img{max-width:100%}`
+
 func executionHTML(value task.Task, run execution.Execution, result string) string {
 	finished := "—"
 	if run.FinishedAt != nil {
@@ -141,7 +159,8 @@ func executionHTML(value task.Task, run execution.Execution, result string) stri
 	if run.Status != execution.StatusSuccess {
 		statusColor = "#ff7f79"
 	}
-	return fmt.Sprintf(`<!doctype html><html><body style="margin:0;background:#0b0e0d;color:#eef3ef;font-family:Arial,sans-serif"><div style="max-width:640px;margin:0 auto;padding:36px 20px"><div style="font-size:20px;font-weight:700;margin-bottom:30px">CronPilot</div><div style="background:#111513;border:1px solid #252b28;border-radius:14px;overflow:hidden"><div style="padding:26px 28px;border-bottom:1px solid #252b28"><div style="color:%s;font-size:11px;font-weight:700;letter-spacing:.12em">%s</div><h1 style="font-size:26px;margin:10px 0 8px">%s</h1><p style="color:#8b9690;margin:0;line-height:1.6">%s</p></div><div style="padding:22px 28px"><table style="width:100%%;font-size:12px;color:#8b9690"><tr><td style="padding:5px 0">Started</td><td style="text-align:right;color:#eef3ef">%s</td></tr><tr><td style="padding:5px 0">Finished</td><td style="text-align:right;color:#eef3ef">%s</td></tr><tr><td style="padding:5px 0">Attempts</td><td style="text-align:right;color:#eef3ef">%d</td></tr><tr><td style="padding:5px 0">Execution</td><td style="text-align:right;color:#eef3ef">%s</td></tr></table><div style="margin-top:22px;color:#68736d;font-size:10px;letter-spacing:.12em">RESULT</div><pre style="white-space:pre-wrap;word-break:break-word;background:#0b0f0d;border:1px solid #29302c;border-radius:9px;padding:16px;color:#c9d1cc;font:12px/1.65 monospace">%s</pre></div></div><p style="color:#59635d;font-size:11px;text-align:center;margin-top:20px">Sent by CronPilot · AI work, right on time.</p></div></body></html>`, statusColor, html.EscapeString(strings.ToUpper(string(run.Status))), html.EscapeString(value.Name), html.EscapeString(value.Description), html.EscapeString(run.StartedAt.Format(time.RFC1123Z)), html.EscapeString(finished), run.Attempts, html.EscapeString(run.ID), html.EscapeString(result))
+	rendered := renderMarkdown(result)
+	return fmt.Sprintf(`<!doctype html><html><head><meta charset="utf-8"><style>%s</style></head><body style="margin:0;background:#0b0e0d;color:#eef3ef;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif"><div style="max-width:640px;margin:0 auto;padding:36px 20px"><div style="font-size:20px;font-weight:700;margin-bottom:30px">CronPilot</div><div style="background:#111513;border:1px solid #252b28;border-radius:14px;overflow:hidden"><div style="padding:26px 28px;border-bottom:1px solid #252b28"><div style="color:%s;font-size:12px;font-weight:700;letter-spacing:.12em">%s</div><h1 style="font-size:24px;margin:10px 0 8px">%s</h1><p style="color:#8b9690;margin:0;line-height:1.6;font-size:14px">%s</p></div><div style="padding:22px 28px"><table style="width:100%%;font-size:13px;color:#8b9690"><tr><td style="padding:5px 0">Started</td><td style="text-align:right;color:#eef3ef">%s</td></tr><tr><td style="padding:5px 0">Finished</td><td style="text-align:right;color:#eef3ef">%s</td></tr><tr><td style="padding:5px 0">Attempts</td><td style="text-align:right;color:#eef3ef">%d</td></tr><tr><td style="padding:5px 0">Execution</td><td style="text-align:right;color:#eef3ef">%s</td></tr></table><div style="margin-top:22px;color:#68736d;font-size:11px;letter-spacing:.12em">RESULT</div><div class="result" style="margin-top:14px;font-size:15px;line-height:1.7;color:#d7deda">%s</div></div></div><p style="color:#59635d;font-size:12px;text-align:center;margin-top:20px">Sent by CronPilot · AI work, right on time.</p></div></body></html>`, emailStyles, statusColor, html.EscapeString(strings.ToUpper(string(run.Status))), html.EscapeString(value.Name), html.EscapeString(value.Description), html.EscapeString(run.StartedAt.Format(time.RFC1123Z)), html.EscapeString(finished), run.Attempts, html.EscapeString(run.ID), rendered)
 }
 
 func testEmailHTML(recipient string, sentAt time.Time) string {
