@@ -316,12 +316,15 @@ func (c *OpenAIClient) executeTools(ctx context.Context, calls []chatToolCall) [
 			started := time.Now()
 			content, toolErr := c.executeTool(ctx, call)
 			results[index] = chatMessage{Role: "tool", ToolCallID: call.ID, Content: content}
+			event := ToolEvent{Name: call.Function.Name, Duration: time.Since(started).Round(time.Millisecond).String()}
+			if toolErr != nil {
+				event.Error = toolErr.Error()
+			}
 			if c.onToolEvent != nil {
-				event := ToolEvent{Name: call.Function.Name, Duration: time.Since(started).Round(time.Millisecond).String()}
-				if toolErr != nil {
-					event.Error = toolErr.Error()
-				}
 				c.onToolEvent(event)
+			}
+			if progress := toolProgressFromContext(ctx); progress != nil {
+				progress(event)
 			}
 		}()
 	}

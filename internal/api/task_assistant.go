@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/chuanye-gao/CronPilot/internal/id"
+	"github.com/chuanye-gao/CronPilot/internal/llm"
 	"github.com/chuanye-gao/CronPilot/internal/task"
 )
 
@@ -51,6 +52,7 @@ type assistantPlanRequest struct {
 type assistantTestJob struct {
 	ID        string    `json:"id"`
 	Status    string    `json:"status"`
+	Progress  string    `json:"progress,omitempty"`
 	Output    string    `json:"output,omitempty"`
 	Error     string    `json:"error,omitempty"`
 	OwnerID   string    `json:"-"`
@@ -169,11 +171,29 @@ func (s *Server) testTaskDraft(w http.ResponseWriter, r *http.Request) {
 func (s *Server) runTaskDraftTest(jobID, prompt string, executor TaskAssistant) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
+
+	ctx = llm.WithToolProgress(ctx, func(event llm.ToolEvent) {
+		s.assistantTestsMu.Lock()
+		defer s.assistantTestsMu.Unlock()
+		job, ok := s.assistantTests[jobID]
+		if !ok {
+			return
+		}
+		switch event.Name {
+		case "web_search":
+			job.Progress = "searching"
+		case "web_open":
+			job.Progress = "reading"
+		}
+		s.assistantTests[jobID] = job
+	})
+
 	output, err := executor.Complete(ctx, prompt)
 
 	s.assistantTestsMu.Lock()
 	job, ok := s.assistantTests[jobID]
 	if ok {
+		job.Progress = ""
 		if err != nil {
 			job.Status = "failed"
 			job.Error = "test run failed"

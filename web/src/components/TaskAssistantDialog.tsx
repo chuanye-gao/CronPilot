@@ -1,4 +1,4 @@
-import { Bot, Check, ChevronDown, Clock3, Mail, Play, Send, Sparkles, UserRound, WandSparkles, X } from "lucide-react";
+import { Bot, Check, ChevronDown, Clock3, LoaderCircle, Mail, Play, Send, Sparkles, UserRound, WandSparkles, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { api } from "../api";
 import { useAuth } from "../auth";
@@ -38,6 +38,7 @@ export function TaskAssistantDialog({ onClose, onSave }: Props) {
   const [saving, setSaving] = useState(false);
   const [advanced, setAdvanced] = useState(false);
   const [testOutput, setTestOutput] = useState<string>();
+  const [testProgress, setTestProgress] = useState<string>();
   const [testedFingerprint, setTestedFingerprint] = useState("");
   const [error, setError] = useState<string>();
   const conversationEnd = useRef<HTMLDivElement>(null);
@@ -97,12 +98,14 @@ export function TaskAssistantDialog({ onClose, onSave }: Props) {
     setTesting(true);
     setError(undefined);
     setTestOutput(undefined);
+    setTestProgress(undefined);
     try {
       let result = await api.testTaskDraft(draft);
       const deadline = Date.now() + 5 * 60_000 + 10_000;
       while (result.status === "running" && Date.now() < deadline) {
         await new Promise((resolve) => window.setTimeout(resolve, 1_000));
         result = await api.taskDraftTest(result.id);
+        setTestProgress(result.progress);
       }
       if (result.status !== "success" || !result.output) {
         throw new Error(result.error || pick("测试运行超时", "Test run timed out"));
@@ -113,6 +116,7 @@ export function TaskAssistantDialog({ onClose, onSave }: Props) {
       setError(localizeError(caught, language, pick("测试运行失败", "Test run failed")));
     } finally {
       setTesting(false);
+      setTestProgress(undefined);
     }
   }
 
@@ -177,6 +181,7 @@ export function TaskAssistantDialog({ onClose, onSave }: Props) {
               <label className="field"><span>{pick("给 AI 的完整指令", "Full AI instructions")}</span><textarea rows={8} value={draft.prompt} onChange={(event) => updateDraft({ prompt: event.target.value })} /></label>
             </div>}
 
+            {testing && <div className="assistant-test-result"><header><LoaderCircle className="spin" size={15} />{pick("测试进行中", "Test running")}</header><p>{testProgress === "searching" ? pick("正在联网搜索…", "Searching the web…") : testProgress === "reading" ? pick("正在阅读来源…", "Reading sources…") : pick("正在生成报告…", "Writing the report…")}</p></div>}
             {testOutput && testedFingerprint === fingerprint && <div className="assistant-test-result"><header><Check size={15} />{pick("测试完成", "Test completed")}</header><LinkifiedOutput value={testOutput} /></div>}
             <InlineError message={error} />
             <div className="assistant-actions">

@@ -28,3 +28,17 @@ type ToolEvent struct {
 	Duration string
 	Error    string
 }
+
+type toolProgressKey struct{}
+
+// WithToolProgress attaches a callback that is invoked for each tool call made
+// during Complete. The callback may run concurrently and must be safe for
+// concurrent use by the caller.
+func WithToolProgress(ctx context.Context, fn func(ToolEvent)) context.Context {
+	return context.WithValue(ctx, toolProgressKey{}, fn)
+}
+
+func toolProgressFromContext(ctx context.Context) func(ToolEvent) {
+	fn, _ := ctx.Value(toolProgressKey{}).(func(ToolEvent))
+	return fn
+}

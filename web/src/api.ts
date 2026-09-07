@@ -9,6 +9,7 @@ export class APIError extends Error {
 export interface TaskDraftTestJob {
   id: string;
   status: "running" | "success" | "failed";
+  progress?: "searching" | "reading";
   output?: string;
   error?: string;
 }
